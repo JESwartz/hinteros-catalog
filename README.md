@@ -18,6 +18,7 @@ apps/<id>.nix              one entry per app (format 2, below)
 apps/terms/<id>-<version>.txt   full vendor terms, plain text, referenced by entries
 lib/default.nix            the format: validator, normalizer, index generator (needs only lib)
 schema/index.schema.json   JSON Schema of the generated Store index
+check-urls.sh               online URL check behind `nix run .#check-icon-urls`
 tests/                     validator unit tests, package/licence eval, NixOS eval
 ```
 
@@ -29,6 +30,7 @@ Flake outputs:
 | `catalogIndex` | The Store index as a Nix value |
 | `packages.x86_64-linux.index` | `$out/share/hinteros/catalog.json` (the index) and `$out/share/hinteros/terms/*.txt` (the vendor terms it references, so the launcher shows them offline) |
 | `lib` | `load`, `validate`, `checkEntry`, `normalize`, `mkIndex`, the enums, and `cacheableUnfree`: the unfree package names (union of `license.unfreePackages`) of entries with `cache = true`, for the system repo's cache job and `forbidUnfree` exception list |
+| `apps.x86_64-linux.check-icon-urls` | Online check of `iconUrl`, `siteUrl` and `terms.url` (see Icons) |
 | `checks` | formatting/lint, validator tests, index against its schema, package and licence eval, NixOS eval |
 
 ## Entry format (format 2)
@@ -47,7 +49,7 @@ changes once published.
 | `homepage` | yes | https URL; also the default `icon.siteUrl` |
 | `license` | yes | `{ free; redistributable; unfreePackages ? [ ]; }`. `unfreePackages` are the `lib.getName` names the box must allow; required for unfree apps, empty for free ones. Checked against nixpkgs' `meta.license` |
 | `sizeMiB` | yes | Approximate download plus disk use, shown in the Store and used for the free-space check |
-| `icon` | yes | Where the session daemon finds the real icon at runtime (HinterOS ships no logos): `desktopId` (the installed app's `.desktop` file; required for native apps), `siteUrl` (defaults to `homepage`; used while the app is not installed and for web apps), `firefoxProfile = true` (web apps whose site refuses icon fetches: use the favicon the kiosk profile stored) |
+| `icon` | yes | Where the session daemon finds the real icon at runtime (HinterOS ships no logos, see Icons): `desktopId` (the installed app's `.desktop` file; required for native apps), `iconUrl` (optional, https: the vendor's own public logo), `siteUrl` (defaults to `homepage`; used while the app is not installed and for web apps), `firefoxProfile = true` (web apps whose site refuses icon fetches: use the favicon the kiosk profile stored) |
 | `app` | one of `app`/`nixos` | Function of the NixOS module arguments returning `hinteros.apps.<id>` settings: `package`, `command`, `kiosk` (`url`, `userAgent`, `fullscreenOnly`), `input` (`gamepad`/`keyboard`), `backKey`, `order`. The system repo sets `enable`, `name` and the icon fields from metadata |
 | `nixos` | one of `app`/`nixos` | Extra NixOS config, a module function or attrset. Only the top-level namespaces `programs`, `hardware`, `services`, `environment`, `xdg`, `fonts`; never `nixpkgs` (no overlays or config: packages are built exactly as in nixpkgs), `imports`, `options` or `hinteros` |
 | `packages` | no | `pkgs: [ package ]`, the app's top-level packages for licence checks, cache builds and size. Defaults to `app.package` |
@@ -66,6 +68,31 @@ changes once published.
 Derived fields in `catalog` and the index: `id`, `kind` (`web` if `app.kiosk` is set, else
 `native`) and `buildsOnDevice` (true for unfree apps without `cache`: only `cache = true` unfree apps are in the vendor
 cache, and nothing unfree is ever on the ISO), and `installer` (true also for `onIso` apps).
+
+### Icons
+
+The repo never contains logos or other images. An entry may instead link to the vendor's own
+public logo with `icon.iconUrl`; the box's session daemon downloads it at runtime (https only,
+at most 1 MiB, image content-type and magic bytes checked), caches it under
+`~/.cache/hinteros/icons` and refreshes it about monthly. The index carries `iconUrl`, so the
+launcher's Store can show logos before an app is installed. Priority, first hit wins:
+
+1. the installed app's own desktop icon (`desktopId`)
+2. `iconUrl`
+3. discovery on `siteUrl` (web app manifest, `apple-touch-icon`, `<link rel=icon>`, `/favicon.ico`)
+4. the favicon Firefox stored in the kiosk profile (`firefoxProfile`)
+5. a letter tile
+
+Choosing an `iconUrl`: a square PNG or SVG of at least 192 px, hosted on the vendor's or
+project's own domain (or its official GitHub organisation, for open-source projects), never a
+Wikimedia page or third-party mirror, and as stable as possible (press-kit or branding-repo
+assets over CDN hashes). Say in a comment where it came from and the date it was checked. If no
+suitable official URL exists, leave `iconUrl` unset and say why; the fallbacks cover it.
+
+`nix run .#check-icon-urls` fetches every `iconUrl`, `siteUrl` and `terms.url` (HTTP 200; for
+`iconUrl` also an image content-type, at most 1 MiB and image magic bytes), prints a table and
+exits non-zero on failures. It needs network, so it is not part of `nix flake check`; the
+scheduled `.forgejo/workflows/links.yml` runs it weekly.
 
 ### Changes from format 1
 
@@ -112,7 +139,7 @@ Boxes that have a removed app lose it on their next update, and the update scree
      and `retrieved` are right, and the file is named `<id>-<version>.txt`.
    - `dataPaths` lists every directory the app writes under a profile's home (check on a box:
      `~/.config`, `~/.local/share`, `~/.cache`, dotfiles), and nothing shared with other apps.
-   - The icon resolves on a box: `desktopId` matches the installed `.desktop` file and `siteUrl`
+   - The icon resolves on a box: `desktopId` matches the installed `.desktop` file, `iconUrl` (if any) passes `nix run .#check-icon-urls` and `siteUrl`
      serves a usable icon (or `firefoxProfile` is set).
    - `sizeMiB` measured on a box (`nix path-info -S` of the closure minus what the box already has).
    - Name, summary and description are user-facing English, no marketing.
@@ -142,4 +169,4 @@ announces a change:
 
 `nix develop` gives nixfmt, statix, deadnix, jq and check-jsonschema, and installs the
 pre-commit hook. `nix fmt` formats. CI runs `nix flake check` on every push
-(`.forgejo/workflows/check.yml`).
+(`.forgejo/workflows/check.yml`); a weekly job checks the online URLs (`links.yml`, see Icons).

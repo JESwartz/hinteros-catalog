@@ -403,6 +403,73 @@ let
         "web"
       ];
     };
+    testIconUrlHttpsPasses = {
+      expr = problems "example" (
+        good
+        // {
+          icon = {
+            desktopId = "org.example.Example";
+            iconUrl = "https://example.org/logo.png";
+          };
+        }
+      );
+      expected = [ ];
+    };
+    testIconUrlRejectsOtherSchemes = {
+      expr =
+        map
+          (
+            u:
+            refuses "icon.iconUrl" (
+              good
+              // {
+                icon = {
+                  desktopId = "x";
+                  iconUrl = u;
+                };
+              }
+            )
+          )
+          [
+            "http://example.org/logo.png"
+            "file:///etc/passwd"
+            "data:image/png;base64,AAAA"
+            "//example.org/logo.png"
+            "https://example.org/a b.png"
+            ""
+            "https://example.org/${lib.concatStrings (lib.genList (_: "a") 500)}"
+          ];
+      expected = lib.genList (_: true) 7;
+    };
+    testIconUrlMustBeString = {
+      expr = refuses "icon.iconUrl" (
+        good
+        // {
+          icon = {
+            desktopId = "x";
+            iconUrl = 5;
+          };
+        }
+      );
+      expected = true;
+    };
+    testIconUrlInIndex = {
+      expr =
+        (builtins.head
+          (catalogLib.mkIndex {
+            x = catalogLib.normalize "x" (
+              good
+              // {
+                icon = {
+                  desktopId = "x";
+                  iconUrl = "https://example.org/l.png";
+                };
+              }
+            );
+          }).apps
+        ).icon.iconUrl;
+      expected = "https://example.org/l.png";
+    };
     testSiteUrlDefaultsToHomepage = {
       expr = (catalogLib.normalize "x" good).icon;
       expected = {

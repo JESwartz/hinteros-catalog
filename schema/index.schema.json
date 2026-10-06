@@ -60,6 +60,7 @@
           "properties": {
             "desktopId": { "type": "string", "pattern": "^[A-Za-z0-9._-]+$" },
             "siteUrl": { "$ref": "#/$defs/Https" },
+            "iconUrl": { "$ref": "#/$defs/Https", "description": "The vendor's own public logo; the daemon downloads and caches it at runtime (https, at most 1 MiB). Optional." },
             "firefoxProfile": { "type": "boolean" }
           }
         },

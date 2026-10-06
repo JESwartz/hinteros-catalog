@@ -136,7 +136,7 @@ let
     icon = {
       required = true;
       check = isAttrs;
-      what = "an attrset { desktopId?; siteUrl?; firefoxProfile?; }";
+      what = "an attrset { desktopId?; siteUrl?; iconUrl?; firefoxProfile?; }";
     };
     status = {
       default = "available";
@@ -316,6 +316,7 @@ let
           unknownKeys = lib.subtractLists [
             "desktopId"
             "siteUrl"
+            "iconUrl"
             "firefoxProfile"
           ] (attrNames ic);
         in
@@ -324,6 +325,9 @@ let
           ic ? desktopId && builtins.match "[A-Za-z0-9._-]+" ic.desktopId == null
         ) "icon.desktopId: a .desktop file name without the extension"
         ++ lib.optional (ic ? siteUrl && !isHttps ic.siteUrl) "icon.siteUrl: an https URL"
+        ++ lib.optional (
+          ic ? iconUrl && !(isHttps ic.iconUrl && stringLength ic.iconUrl <= 500)
+        ) "icon.iconUrl: an https URL of the vendor's own public logo (at most 500 characters)"
         ++ lib.optional (ic ? firefoxProfile && !isBool ic.firefoxProfile) "icon.firefoxProfile: a bool"
         ++ lib.optional (
           (ic.firefoxProfile or false) && full.kind != "web"
