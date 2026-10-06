@@ -1,6 +1,6 @@
-# Crunchyroll: free (a website), Firefox kiosk, preinstalled.
+# Crunchyroll: free (a website), Firefox kiosk. On the ISO, so an offline install can pick it.
 {
-  format = 1;
+  format = 2;
   name = "Crunchyroll";
   summary = "Anime streaming, in a full-screen browser profile.";
   description = ''
@@ -20,7 +20,9 @@
     # crunchyroll.com refuses non-browser icon fetches (403): use the favicon Firefox stored.
     firefoxProfile = true;
   };
-  preinstalled = true;
+  onIso = true;
+  # The kiosk profile (cookies, login, Widevine) lives in one directory per app.
+  dataPaths = [ ".local/share/hinteros/firefox/crunchyroll" ];
 
   app = _: {
     kiosk.url = "https://www.crunchyroll.com";

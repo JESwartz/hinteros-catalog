@@ -1,6 +1,6 @@
 # Moonlight: free, native, from the binary cache.
 {
-  format = 1;
+  format = 2;
   name = "Moonlight";
   summary = "Stream games from your gaming PC to the TV.";
   description = ''
@@ -15,6 +15,13 @@
   };
   sizeMiB = 150;
   icon.desktopId = "com.moonlight_stream.Moonlight";
+  installer = true;
+  # Pairing keys and settings (QSettings, organisation and app name "Moonlight Game Streaming Project").
+  dataPaths = [
+    ".config/Moonlight Game Streaming Project"
+    ".cache/Moonlight Game Streaming Project"
+    ".local/share/Moonlight Game Streaming Project"
+  ];
 
   app =
     { pkgs, ... }:

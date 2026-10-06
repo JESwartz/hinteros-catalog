@@ -1,4 +1,4 @@
-# The catalog entry format (format 1) and its validator. Pure: needs only nixpkgs' `lib`, so the
+# The catalog entry format (format 2) and its validator. Pure: needs only nixpkgs' `lib`, so the
 # system repo and the index can read entry metadata without evaluating any package.
 #
 # An entry is `apps/<id>.nix`, a plain attrset (see README.md for every field). `app` and
@@ -14,12 +14,15 @@ let
     isFunction
     isInt
     isList
+    isPath
     isString
     stringLength
     ;
 
-  supportedFormats = [ 1 ];
-  indexVersion = 1;
+  # Format 2 replaced `featured`/`preinstalled` by `installer`/`onIso`/`installerDefault`, dropped
+  # `ageRating` and added `cache`, `terms` and `dataPaths`; no format 1 entry exists any more.
+  supportedFormats = [ 2 ];
+  indexVersion = 2;
 
   categories = [
     "games"
@@ -32,13 +35,6 @@ let
     "available" # listed and installable
     "retired" # hidden from the Store; stays working where installed
     "removed" # tombstone: no module, installed copies go away on the next update
-  ];
-  ageRatings = [
-    3
-    7
-    12
-    16
-    18
   ];
   # System features an entry can ask for; the system repo maps each to NixOS options.
   features = [
@@ -55,6 +51,8 @@ let
     "backKey"
     "order"
   ];
+  # The one non-https kiosk URL: Firefox's own start page (the `firefox` app).
+  kioskUrls = [ "about:home" ];
   kioskKeys = [
     "url"
     "userAgent"
@@ -79,6 +77,12 @@ let
     isString v && v != "" && stringLength v <= max && builtins.match ".*[[:cntrl:]].*" v == null;
   # Like isText, but newlines are allowed (descriptions, notes).
   isLongText = max: v: isString v && v != "" && stringLength v <= max;
+  # Relative path below a profile's home: no leading / or ~, no empty, . or .. components.
+  isHomePath =
+    v:
+    isText 200 v
+    && builtins.match "[/~].*|.*[*?$`].*" v == null
+    && lib.all (c: c != "" && c != "." && c != "..") (lib.splitString "/" v);
   isNull = v: v == null;
   isFn = v: isFunction v || isAttrs v;
   listOf = p: v: isList v && lib.all p v;
@@ -144,11 +148,6 @@ let
       check = either isNull (isText 200);
       what = "null or a single-line string of at most 200 characters";
     };
-    ageRating = {
-      default = null;
-      check = either isNull (oneOf ageRatings);
-      what = "null or one of ${lib.concatMapStringsSep ", " toString ageRatings}";
-    };
     requires = {
       default = [ ];
       check = listOf (oneOf features);
@@ -164,15 +163,35 @@ let
       check = listOf isId;
       what = "a list of app ids";
     };
-    featured = {
+    installer = {
       default = false;
       check = isBool;
       what = "a bool";
     };
-    preinstalled = {
+    onIso = {
       default = false;
       check = isBool;
       what = "a bool";
+    };
+    installerDefault = {
+      default = false;
+      check = isBool;
+      what = "a bool";
+    };
+    cache = {
+      default = false;
+      check = isBool;
+      what = "a bool";
+    };
+    terms = {
+      default = null;
+      check = either isNull isAttrs;
+      what = "null or an attrset { title; version; url; retrieved; text; }";
+    };
+    dataPaths = {
+      default = [ ];
+      check = listOf isHomePath;
+      what = "a list of paths relative to a profile's home (no leading / or ~, no ., .. or empty components, no wildcards)";
     };
     notes = {
       default = null;
@@ -253,6 +272,44 @@ let
           (lic.free or false) && !(lic.redistributable or true)
         ) "license: free implies redistributable";
 
+      tm = full.terms;
+      termsProblems =
+        if tm == null then
+          lib.optional (!lic.free) "terms: required for unfree apps (the vendor's full terms text)"
+        else
+          let
+            unknownKeys = lib.subtractLists [
+              "title"
+              "version"
+              "url"
+              "retrieved"
+              "text"
+            ] (attrNames tm);
+            file = "${id}-${tm.version or ""}.txt";
+          in
+          lib.optional (unknownKeys != [ ]) "terms: unknown field(s) ${lib.concatStringsSep ", " unknownKeys}"
+          ++ lib.optional (
+            !isText 80 (tm.title or null)
+          ) "terms.title: a single-line string of at most 80 characters"
+          ++ lib.optional (
+            !(isString (tm.version or null) && builtins.match "[A-Za-z0-9._-]{1,32}" tm.version != null)
+          ) "terms.version: letters, digits, . _ - (at most 32), the vendor's version or revision date"
+          ++ lib.optional (!isHttps (tm.url or null)) "terms.url: an https URL"
+          ++ lib.optional (
+            !(
+              isString (tm.retrieved or null) && builtins.match "[0-9]{4}-[0-9]{2}-[0-9]{2}" tm.retrieved != null
+            )
+          ) "terms.retrieved: the retrieval date, YYYY-MM-DD"
+          ++ (
+            if !isPath (tm.text or null) then
+              [ "terms.text: a path to the plain-text terms, ./terms/<id>-<version>.txt" ]
+            else
+              lib.optional (
+                baseNameOf tm.text != file
+              ) "terms.text: the file must be named ${file} (<id>-<version>.txt)"
+              ++ lib.optional (!builtins.pathExists tm.text) "terms.text: file does not exist"
+          );
+
       ic = full.icon;
       iconProblems =
         let
@@ -292,7 +349,9 @@ let
           ++ lib.optional (
             unknownKiosk != [ ]
           ) "app.kiosk: unknown field(s) ${lib.concatStringsSep ", " unknownKiosk}"
-          ++ lib.optional (appAttrs ? kiosk && !isHttps (kiosk.url or null)) "app.kiosk.url: an https URL"
+          ++ lib.optional (
+            appAttrs ? kiosk && !(isHttps (kiosk.url or null) || elem (kiosk.url or null) kioskUrls)
+          ) "app.kiosk.url: an https URL (or ${lib.concatStringsSep ", " kioskUrls})"
           ++ lib.optional (
             !(appAttrs ? kiosk) && !(appAttrs ? package) && !(appAttrs ? command)
           ) "app: needs package, command or kiosk"
@@ -325,19 +384,30 @@ let
         ++ lib.optional (elem id full.depends) "depends: an app cannot depend on itself"
         ++ lib.optional (elem id full.conflicts) "conflicts: an app cannot conflict with itself"
         ++ lib.optional (
-          full.preinstalled && !lic.free
-        ) "preinstalled: only free apps (the ISO and the cache never contain unfree software)"
+          full.onIso && !lic.free
+        ) "onIso: only free apps (the ISO never contains unfree software)"
         ++ lib.optional (
-          full.featured && full.preinstalled
-        ) "featured: preinstalled apps are never offered in the wizard"
-        ++ lib.optional (full.featured && full.status != "available") "featured: only available apps";
+          full.installerDefault && !full.onIso
+        ) "installerDefault: the app must also be onIso, so an offline install can pick it"
+        ++ lib.optional (
+          (full.installer || full.onIso || full.installerDefault) && full.status != "available"
+        ) "installer/onIso/installerDefault: only available apps"
+        ++ lib.optional (
+          full.cache && lic.free
+        ) "cache: only for unfree apps (free apps are always in the binary cache)"
+        ++ lib.optional (
+          full.cache && !lic.redistributable
+        ) "cache: only unfreeRedistributable apps may be cached (license.redistributable = true)"
+        ++ lib.optional (
+          full.kind == "web" && !elem ".local/share/hinteros/firefox/${id}" full.dataPaths
+        ) "dataPaths: a kiosk (web) app must list its Firefox profile, .local/share/hinteros/firefox/${id}";
     in
     lib.optional (!isId id) "id: must match ${idPattern} (the file name without .nix)"
     ++ map (n: "missing field: ${n}") missing
     ++ lib.optional (unknown != [ ]) "unknown field(s): ${lib.concatStringsSep ", " unknown}"
     ++ map (n: "${n}: must be ${fields.${n}.what}") invalid
     ++ lib.optionals (missing == [ ] && invalid == [ ] && !tombstone) (
-      licProblems ++ iconProblems ++ appProblems ++ nixosProblems ++ crossField
+      licProblems ++ termsProblems ++ iconProblems ++ appProblems ++ nixosProblems ++ crossField
     )
     ++ lib.optional (
       tombstone && (e.app or null != null || e.nixos or null != null)
@@ -357,8 +427,8 @@ let
         ++ map (d: "${id}: depends on ${d} but also conflicts with it") (
           lib.intersectLists e.depends e.conflicts
         )
-        ++ map (d: "${id}: preinstalled but depends on ${d}, which is not") (
-          lib.filter (d: e.preinstalled && entries ? ${d} && !entries.${d}.preinstalled) e.depends
+        ++ map (d: "${id}: onIso but depends on ${d}, which is not onIso") (
+          lib.filter (d: e.onIso && entries ? ${d} && !entries.${d}.onIso) e.depends
         )
       ) entries
     );
@@ -389,9 +459,11 @@ let
       inherit id;
       license = lic;
       kind = if isAttrs appAttrs && appAttrs ? kiosk then "web" else "native";
-      # Policy, not licence: nothing unfree is ever in the vendor cache or the ISO, so every
-      # unfree app (even unfreeRedistributable Steam) is fetched from upstream and built on the box.
-      buildsOnDevice = !(lic.free or true);
+      # The ISO and the binary cache never contain unfree software, except apps that opt in with
+      # `cache` (checked to be unfreeRedistributable): everything else unfree is built on the box.
+      buildsOnDevice = !(lic.free or true) && !withDefaults.cache;
+      # Apps on the ISO are always offered in the installer (offline), others only when online.
+      installer = withDefaults.installer || withDefaults.onIso;
       icon =
         lib.optionalAttrs (withDefaults.status != "removed") { siteUrl = withDefaults.homepage; }
         // withDefaults.icon;
@@ -482,20 +554,47 @@ let
           homepage
           kind
           sizeMiB
-          ageRating
           icon
           requires
           depends
           conflicts
-          featured
-          preinstalled
+          installer
+          onIso
+          installerDefault
+          dataPaths
           status
           statusReason
           buildsOnDevice
           ;
         inherit (e.license) free redistributable;
         description = reflow e.description;
+        # `file` is relative to catalog.json (the index package installs it next to it).
+        terms =
+          if e.terms == null then
+            null
+          else
+            {
+              inherit (e.terms)
+                title
+                version
+                url
+                retrieved
+                ;
+              file = "terms/${baseNameOf e.terms.text}";
+            };
       };
+
+  # Unfree package names the system repo's `forbidUnfree` / cache job may allow: the union of
+  # unfreePackages of every available entry with `cache = true`.
+  cacheableUnfreeOf =
+    catalog:
+    lib.unique (
+      lib.sort lib.lessThan (
+        lib.concatMap (e: e.license.unfreePackages) (
+          lib.filter (e: e.cache && e.status != "removed") (lib.attrValues catalog)
+        )
+      )
+    );
 
   mkIndex = catalog: {
     inherit indexVersion;
@@ -518,5 +617,6 @@ in
     readDir
     load
     mkIndex
+    cacheableUnfreeOf
     ;
 }

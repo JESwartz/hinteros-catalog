@@ -2,7 +2,9 @@
 # declaration matches nixpkgs' meta:
 #   - with exactly the entry's unfreePackages allowed, its packages evaluate;
 #   - an unfree entry fails to evaluate with nothing allowed (so the declaration is needed);
-#   - license.free / license.redistributable equal what nixpkgs says about the packages.
+#   - license.free / license.redistributable equal what nixpkgs says about the packages;
+#   - cache = true only if every unfree package of the entry has nixpkgs' unfreeRedistributable
+#     licence.
 # Unfree packages are only evaluated, never built: anything built on the runner would end up
 # in the store Harmonia serves. Run under pure evaluation (nix flake check): impure evaluation
 # would let NIXPKGS_ALLOW_UNFREE or a user nixpkgs config hide a missing declaration.
@@ -33,6 +35,7 @@ let
 
   licenses = p: lib.toList (p.meta.license or [ ]);
   isFree = p: lib.all (l: l.free or true) (licenses p);
+  isUnfreeRedistributable = p: lib.all (l: l == lib.licenses.unfreeRedistributable) (licenses p);
   isRedistributable = p: lib.all (l: l.redistributable or (l.free or true)) (licenses p);
 
   checkEntry =
@@ -50,6 +53,11 @@ let
     ++
       lib.optional (ok && ps != [ ] && lib.all isFree ps != e.license.free)
         "${id}: license.free = ${lib.boolToString e.license.free}, but nixpkgs says ${lib.boolToString (lib.all isFree ps)}"
+    ++ lib.optionals (ok && e.cache) (
+      map (p: "${id}: cache = true, but ${lib.getName p} is not unfreeRedistributable in nixpkgs") (
+        lib.filter (p: !isFree p && !isUnfreeRedistributable p) ps
+      )
+    )
     ++
       lib.optional (ok && ps != [ ] && lib.all isRedistributable ps != e.license.redistributable)
         "${id}: license.redistributable = ${lib.boolToString e.license.redistributable}, but nixpkgs says ${lib.boolToString (lib.all isRedistributable ps)}";

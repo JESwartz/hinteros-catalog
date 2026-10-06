@@ -1,0 +1,1 @@
+Example terms text for the validator tests.

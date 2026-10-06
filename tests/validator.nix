@@ -5,7 +5,7 @@ let
   inherit (pkgs) lib;
 
   good = {
-    format = 1;
+    format = 2;
     name = "Example";
     summary = "An example app.";
     description = "An example app used by the validator tests.";
@@ -18,6 +18,21 @@ let
     sizeMiB = 10;
     icon.desktopId = "org.example.Example";
     app = { pkgs, ... }: { package = pkgs.hello; };
+  };
+
+  terms = {
+    title = "Example Terms";
+    version = "1.0";
+    url = "https://example.org/terms";
+    retrieved = "2026-10-06";
+    text = ./fixtures/example-1.0.txt;
+  };
+  unfreeRedistributable = {
+    license = {
+      free = false;
+      redistributable = true;
+      unfreePackages = [ "x" ];
+    };
   };
 
   problems = id: e: catalogLib.checkEntry id e;
@@ -42,7 +57,7 @@ let
       expected = true;
     };
     testUnsupportedFormat = {
-      expr = refuses "format: must be one of 1" (good // { format = 2; });
+      expr = refuses "format: must be one of 2" (good // { format = 1; });
       expected = true;
     };
     testHttpHomepage = {
@@ -78,16 +93,225 @@ let
       );
       expected = true;
     };
-    testUnfreeNotPreinstalled = {
-      expr = refuses "preinstalled: only free apps" (
+    testUnfreeNotOnIso = {
+      expr = refuses "onIso: only free apps" (good // { onIso = true; } // unfreeRedistributable);
+      expected = true;
+    };
+    testInstallerDefaultNeedsOnIso = {
+      expr = refuses "installerDefault: the app must also be onIso" (
+        good // { installerDefault = true; }
+      );
+      expected = true;
+    };
+    testOnIsoInstallerDefaultPasses = {
+      expr = problems "example" (
         good
         // {
-          preinstalled = true;
+          onIso = true;
+          installerDefault = true;
+        }
+      );
+      expected = [ ];
+    };
+    testOnIsoImpliesInstaller = {
+      expr = map (e: (catalogLib.normalize "x" e).installer) [
+        good
+        (good // { onIso = true; })
+        (good // { installer = true; })
+      ];
+      expected = [
+        false
+        true
+        true
+      ];
+    };
+    testRemovedFormatFields = {
+      expr = map (f: refuses "unknown field(s): ${f}" (good // { ${f} = true; })) [
+        "preinstalled"
+        "featured"
+        "ageRating"
+      ];
+      expected = [
+        true
+        true
+        true
+      ];
+    };
+    testOnIsoDependsOnIso = {
+      expr = catalogLib.validate {
+        a = good // {
+          onIso = true;
+          depends = [ "b" ];
+        };
+        b = good;
+      };
+      expected = {
+        _catalog = [ "a: onIso but depends on b, which is not onIso" ];
+      };
+    };
+    testCacheOnlyUnfree = {
+      expr = refuses "cache: only for unfree apps" (good // { cache = true; });
+      expected = true;
+    };
+    testCacheNeedsRedistributable = {
+      expr = refuses "only unfreeRedistributable apps may be cached" (
+        good
+        // {
+          cache = true;
           license = {
             free = false;
-            redistributable = true;
+            redistributable = false;
             unfreePackages = [ "x" ];
           };
+          inherit terms;
+        }
+      );
+      expected = true;
+    };
+    testCachedUnfreePasses = {
+      expr = problems "example" (
+        good
+        // {
+          cache = true;
+          inherit terms;
+        }
+        // unfreeRedistributable
+      );
+      expected = [ ];
+    };
+    testBuildsOnDevice = {
+      expr = map (e: (catalogLib.normalize "example" e).buildsOnDevice) [
+        good
+        (good // { inherit terms; } // unfreeRedistributable)
+        (
+          good
+          // {
+            cache = true;
+            inherit terms;
+          }
+          // unfreeRedistributable
+        )
+      ];
+      expected = [
+        false
+        true
+        false
+      ];
+    };
+    testCacheableUnfree = {
+      expr = catalogLib.cacheableUnfreeOf (
+        lib.mapAttrs catalogLib.normalize {
+          a = good;
+          b =
+            good
+            // {
+              cache = true;
+              inherit terms;
+            }
+            // unfreeRedistributable;
+          c =
+            good
+            // {
+              inherit terms;
+            }
+            // unfreeRedistributable
+            // {
+              license = {
+                free = false;
+                redistributable = true;
+                unfreePackages = [ "other" ];
+              };
+            };
+        }
+      );
+      expected = [ "x" ];
+    };
+    testUnfreeNeedsTerms = {
+      expr = refuses "terms: required for unfree apps" (good // unfreeRedistributable);
+      expected = true;
+    };
+    testTermsFileName = {
+      expr = refuses "the file must be named example-2.0.txt" (
+        good
+        // {
+          terms = terms // {
+            version = "2.0";
+          };
+        }
+      );
+      expected = true;
+    };
+    testTermsFields = {
+      expr = map (t: refuses "terms." (good // { terms = terms // t; })) [
+        { url = "http://x.org"; }
+        { retrieved = "yesterday"; }
+        { text = "/not/a/path.txt"; }
+        { title = ""; }
+      ];
+      expected = [
+        true
+        true
+        true
+        true
+      ];
+    };
+    testTermsPasses = {
+      expr = problems "example" (good // { inherit terms; });
+      expected = [ ];
+    };
+    testDataPathsPass = {
+      expr = problems "example" (
+        good
+        // {
+          dataPaths = [
+            ".local/share/Steam"
+            ".config/Plex HTPC"
+          ];
+        }
+      );
+      expected = [ ];
+    };
+    testDataPathsRefused = {
+      expr = map (p: refuses "dataPaths:" (good // { dataPaths = [ p ]; })) [
+        "/etc"
+        "~/x"
+        "../x"
+        ".config/../../x"
+        "."
+        ""
+        "a//b"
+        "a/"
+        ".config/*"
+      ];
+      expected = lib.genList (_: true) 9;
+    };
+    testKioskNeedsProfileDataPath = {
+      expr = refuses "dataPaths: a kiosk (web) app must list its Firefox profile" (
+        good
+        // {
+          icon = { };
+          app = _: { kiosk.url = "https://example.org"; };
+        }
+      );
+      expected = true;
+    };
+    testKioskWithProfilePasses = {
+      expr = problems "example" (
+        good
+        // {
+          icon = { };
+          app = _: { kiosk.url = "https://example.org"; };
+          dataPaths = [ ".local/share/hinteros/firefox/example" ];
+        }
+      );
+      expected = [ ];
+    };
+    testKioskAboutHome = {
+      expr = refuses "app.kiosk.url" (
+        good
+        // {
+          icon = { };
+          app = _: { kiosk.url = "about:config"; };
         }
       );
       expected = true;
@@ -142,7 +366,7 @@ let
     };
     testTombstone = {
       expr = problems "old-app" {
-        format = 1;
+        format = 2;
         name = "Old app";
         status = "removed";
         statusReason = "Discontinued upstream.";
@@ -151,7 +375,7 @@ let
     };
     testTombstoneHasNoModule = {
       expr = refuses "a removed entry has no app or nixos" {
-        format = 1;
+        format = 2;
         name = "Old app";
         status = "removed";
         statusReason = "Discontinued upstream.";

@@ -1,8 +1,8 @@
-# Steam: unfree (unfreeRedistributable), native. Never in the vendor cache or the ISO: the box
-# fetches the bootstrap from Valve and builds the FHS wrapper itself. Its free dependencies
-# (32-bit Mesa and friends) still come from cache.nixos.org.
+# Steam: unfree (unfreeRedistributable), native. The one unfree app that is cached: with
+# `cache = true` CI builds it and the binary cache serves it, so installing is a download like
+# a free app. Never on the ISO.
 {
-  format = 1;
+  format = 2;
   name = "Steam";
   summary = "Play your Steam library on the TV.";
   description = ''
@@ -26,9 +26,26 @@
     desktopId = "steam";
     siteUrl = "https://store.steampowered.com";
   };
-  ageRating = null;
   requires = [ "graphics32" ];
-  featured = true;
+  installer = true;
+  cache = true; # unfreeRedistributable (checked against nixpkgs by tests/packages.nix)
+
+  # Refresh when Valve revises the agreement (see README, "Refreshing vendor terms").
+  terms = {
+    title = "Steam Subscriber Agreement";
+    version = "2026-09-10"; # "last updated on September 10, 2026"
+    url = "https://store.steampowered.com/subscriber_agreement/";
+    retrieved = "2026-10-06";
+    text = ./terms/steam-2026-09-10.txt;
+  };
+
+  # WARNING: ~/.local/share/Steam holds the installed games and their saves along with the
+  # client, so deleting it removes every installed game in that profile. The remove dialog's
+  # "delete data" confirmation must say so. ~/.steam holds symlinks into it and the login state.
+  dataPaths = [
+    ".local/share/Steam"
+    ".steam"
+  ];
 
   # No `app`: the session daemon has a built-in `steam` entry (Big Picture, games.list).
   # programs.steam also enables 32-bit graphics and the controller udev rules.
