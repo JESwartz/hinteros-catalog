@@ -1,0 +1,21 @@
+# Weekly online check of the catalog's iconUrl, siteUrl and terms.url (`nix run .#check-icon-urls`).
+# Separate from check.yml: `nix flake check` stays offline and deterministic. Same host runner and
+# plain-git checkout as check.yml (no Node.js on the host). Scheduled runs use the default branch.
+name: links
+
+on:
+  schedule:
+    - cron: "17 4 * * 1"
+  workflow_dispatch:
+
+jobs:
+  links:
+    runs-on: hinteros-host
+    steps:
+      - name: checkout
+        run: |
+          git init -q .
+          git fetch -q --depth 1 "${{ github.server_url }}/${{ github.repository }}.git" "${{ github.sha }}"
+          git checkout -q FETCH_HEAD
+      - name: check icon and link URLs
+        run: nix run .#check-icon-urls

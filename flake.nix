@@ -104,6 +104,28 @@
         };
       };
 
+      # Online check of every iconUrl, siteUrl and terms.url (`nix run .#check-icon-urls`); kept out
+      # of `nix flake check`, which stays offline. Run weekly by .forgejo/workflows/links.yml.
+      apps.${system}.check-icon-urls = {
+        type = "app";
+        program = lib.getExe (
+          pkgs.writeShellApplication {
+            name = "check-icon-urls";
+            runtimeInputs = [
+              pkgs.curl
+              pkgs.jq
+              pkgs.coreutils
+              pkgs.gnugrep
+            ];
+            excludeShellChecks = [ "SC2312" ];
+            text = ''
+              set -- "${self.packages.${system}.index}/share/hinteros/catalog.json"
+              ${builtins.readFile ./check-urls.sh}
+            '';
+          }
+        );
+      };
+
       devShells.${system}.default = pkgs.mkShell {
         packages = [
           pkgs.nixfmt
