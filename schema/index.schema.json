@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://justsomeshed.com/JSwartz/HinterOS/hinteros-catalog/schema/index.schema.json",
+  "title": "HinterOS catalog index",
+  "description": "Generated from apps/*.nix by lib.mkIndex (indexVersion 1). Read by the session daemon and the launcher's Store UI. Receivers ignore unknown fields and treat unknown enum values as documented.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["indexVersion", "apps"],
+  "properties": {
+    "indexVersion": { "const": 1 },
+    "apps": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          { "$ref": "#/$defs/App" },
+          { "$ref": "#/$defs/RemovedApp" }
+        ]
+      }
+    }
+  },
+  "$defs": {
+    "Id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,31}$" },
+    "Https": { "type": "string", "pattern": "^https://\\S+$" },
+    "App": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id", "name", "summary", "description", "category", "homepage", "kind", "sizeMiB",
+        "ageRating", "icon", "requires", "depends", "conflicts", "featured", "preinstalled",
+        "status", "statusReason", "buildsOnDevice", "free", "redistributable"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/Id" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "summary": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "description": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "category": {
+          "description": "Unknown values: show under 'Other'.",
+          "enum": ["games", "video", "music", "photos", "utilities"]
+        },
+        "homepage": { "$ref": "#/$defs/Https" },
+        "kind": {
+          "description": "As in apps.list. Unknown values: native.",
+          "enum": ["native", "web"]
+        },
+        "sizeMiB": { "type": "integer", "minimum": 1, "description": "Approximate download plus disk use" },
+        "ageRating": {
+          "description": "PEGI-style minimum age, or null when not rated.",
+          "enum": [null, 3, 7, 12, 16, 18]
+        },
+        "icon": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Where the session daemon finds the real icon at runtime; HinterOS ships no logos. siteUrl defaults to homepage.",
+          "properties": {
+            "desktopId": { "type": "string", "pattern": "^[A-Za-z0-9._-]+$" },
+            "siteUrl": { "$ref": "#/$defs/Https" },
+            "firefoxProfile": { "type": "boolean" }
+          }
+        },
+        "requires": { "type": "array", "items": { "enum": ["graphics32"] } },
+        "depends": { "type": "array", "items": { "$ref": "#/$defs/Id" } },
+        "conflicts": { "type": "array", "items": { "$ref": "#/$defs/Id" } },
+        "featured": { "type": "boolean", "description": "Offered in the installer's app step" },
+        "preinstalled": { "type": "boolean", "description": "A default app: always installed, no Remove" },
+        "status": { "enum": ["available", "retired"] },
+        "statusReason": { "type": ["string", "null"], "maxLength": 200 },
+        "buildsOnDevice": {
+          "type": "boolean",
+          "description": "Unfree: fetched from the vendor and built on the box during install"
+        },
+        "free": { "type": "boolean" },
+        "redistributable": { "type": "boolean" }
+      }
+    },
+    "RemovedApp": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "status", "statusReason"],
+      "properties": {
+        "id": { "$ref": "#/$defs/Id" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "status": { "const": "removed" },
+        "statusReason": { "type": "string", "minLength": 1, "maxLength": 200 }
+      }
+    }
+  }
+}
