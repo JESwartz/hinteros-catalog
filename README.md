@@ -5,15 +5,17 @@ one entry per app that a HinterOS box can install from Settings or the first-boo
 
 The catalog reaches boxes as a flake input of the system repo, locked per channel release, so
 catalog changes ship with system updates and are covered by the same signed-commit check. Boxes
-never fetch this repo on their own. Unfree apps such as Plex and Steam are listed here but never
-redistributed: the box fetches them from the vendor and builds them itself.
+never fetch this repo on their own. Unfree apps are listed here but only redistributable ones are ever
+cached: Plex is fetched from the vendor and built on the box; Steam (`unfreeRedistributable`) is
+the one explicit exception (`cache = true`).
 
 License: GPL-3.0-only.
 
 ## Layout
 
 ```
-apps/<id>.nix              one entry per app (format 1, below)
+apps/<id>.nix              one entry per app (format 2, below)
+apps/terms/<id>-<version>.txt   full vendor terms, plain text, referenced by entries
 lib/default.nix            the format: validator, normalizer, index generator (needs only lib)
 schema/index.schema.json   JSON Schema of the generated Store index
 tests/                     validator unit tests, package/licence eval, NixOS eval
@@ -25,11 +27,11 @@ Flake outputs:
 |---|---|
 | `catalog` | `{ <id> = entry; }`, validated and normalized. Evaluating it throws with every problem if any entry is invalid |
 | `catalogIndex` | The Store index as a Nix value |
-| `packages.x86_64-linux.index` | `$out/share/hinteros/catalog.json` (the index, pretty-printed) |
-| `lib` | `load`, `validate`, `checkEntry`, `normalize`, `mkIndex`, and the enums |
+| `packages.x86_64-linux.index` | `$out/share/hinteros/catalog.json` (the index) and `$out/share/hinteros/terms/*.txt` (the vendor terms it references, so the launcher shows them offline) |
+| `lib` | `load`, `validate`, `checkEntry`, `normalize`, `mkIndex`, the enums, and `cacheableUnfree`: the unfree package names (union of `license.unfreePackages`) of entries with `cache = true`, for the system repo's cache job and `forbidUnfree` exception list |
 | `checks` | formatting/lint, validator tests, index against its schema, package and licence eval, NixOS eval |
 
-## Entry format (format 1)
+## Entry format (format 2)
 
 An entry is a plain attrset in `apps/<id>.nix`. The id is the file name: lowercase letters,
 digits and `-`, at most 32 characters. It is what `state.json`'s `apps` list stores, so it never
@@ -37,7 +39,7 @@ changes once published.
 
 | Field | Required | Meaning |
 |---|---|---|
-| `format` | yes | `1` |
+| `format` | yes | `2` |
 | `name` | yes | Display name, one line, ≤ 40 characters |
 | `summary` | yes | One line, ≤ 80 characters |
 | `description` | yes | ≤ 1000 characters. Wrap it freely: the index joins lines into paragraphs (a blank line separates paragraphs) |
@@ -51,16 +53,25 @@ changes once published.
 | `packages` | no | `pkgs: [ package ]`, the app's top-level packages for licence checks, cache builds and size. Defaults to `app.package` |
 | `status` | no | `available` (default), `retired` (hidden from the Store, keeps working where installed), `removed` (tombstone, see below) |
 | `statusReason` | if not available | One line shown to users who have the app |
-| `ageRating` | no | `null` (default) or a PEGI-style age: 3, 7, 12, 16, 18 (for future parental controls) |
 | `requires` | no | System features the system repo turns on: `graphics32` |
 | `depends`, `conflicts` | no | Other app ids. Installing adds dependencies; conflicting apps cannot be installed together |
-| `featured` | no | Offered in the installer's app step. Not for preinstalled apps |
-| `preinstalled` | no | A default app: always installed, in the ISO, no Remove. Free apps only |
+| `installer` | no | Listed in the installer's and first-boot wizard's app selection when the box is online (Steam, Plex, Moonlight). Implied by `onIso` |
+| `onIso` | no | Ships on the ISO, so an offline install can select it. Free apps only; its `depends` must be `onIso` too |
+| `installerDefault` | no | Pre-selected in the app selection (YouTube, Firefox). Must also be `onIso`. Still an ordinary app: every app can be removed |
+| `cache` | no | Default `false`. `true` only for an unfree app whose unfree packages are all `unfreeRedistributable` in nixpkgs: CI builds it, the binary cache serves it and the install is a download like a free app. Checked against nixpkgs `meta.license` by `tests/packages.nix`. Free apps are always cached and must not set it. Names go into `lib.cacheableUnfree` |
+| `terms` | unfree apps | The vendor's full terms, shown in full in the install dialog before the user accepts: `{ title; version; url; retrieved; text; }`. `version` is the vendor's version or revision date (the box records which version was accepted), `retrieved` the date the text was copied (`YYYY-MM-DD`), `text` a plain UTF-8 file `./terms/<id>-<version>.txt`. The index carries title, version, url, retrieved and the file name `terms/<id>-<version>.txt`; the index package installs the files next to `catalog.json` |
+| `dataPaths` | no | Paths relative to a profile's home that hold the app's data. "Remove and delete data" deletes them in every profile after a second confirmation. No leading `/` or `~`, no `.`, `..` or empty components, no wildcards. A kiosk (web) app must list its Firefox profile, `.local/share/hinteros/firefox/<id>`. Deleting Steam's `.local/share/Steam` also removes installed games |
 | `notes` | no | Maintainer notes (upstream quirks, review findings); not in the index |
 
 Derived fields in `catalog` and the index: `id`, `kind` (`web` if `app.kiosk` is set, else
-`native`) and `buildsOnDevice` (true for every unfree app: nothing unfree is ever in the vendor
-cache or the ISO).
+`native`) and `buildsOnDevice` (true for unfree apps without `cache`: only `cache = true` unfree apps are in the vendor
+cache, and nothing unfree is ever on the ISO), and `installer` (true also for `onIso` apps).
+
+### Changes from format 1
+
+Format 2 replaces `featured`/`preinstalled` by `installer`/`onIso`/`installerDefault` (default apps
+are ordinary, removable apps now), drops `ageRating` (comes back with parental controls) and adds
+`cache`, `terms` and `dataPaths`. Index version 2. Entries that name the old fields are rejected.
 
 ### Removing an app
 
@@ -70,7 +81,7 @@ file with a tombstone once it can no longer be built:
 
 ```nix
 {
-  format = 1;
+  format = 2;
   name = "Old app";
   status = "removed";
   statusReason = "Discontinued by its developer.";
@@ -82,7 +93,8 @@ Boxes that have a removed app lose it on their next update, and the update scree
 ## Adding an app
 
 1. Create `apps/<id>.nix`; copy the closest example (`moonlight.nix` for a free native app,
-   `crunchyroll.nix` for a web app, `plex-htpc.nix` for an unfree one).
+   `crunchyroll.nix` for a web app, `plex-htpc.nix` for an unfree one with terms, `steam.nix` for a
+   cached unfree one). Unfree apps need `terms`: fetch the vendor's text, see below.
 2. Run `nix flake check`. It validates the entry, checks the licence declaration against nixpkgs
    (unfree apps are evaluated only, never built), evaluates a NixOS system with every entry, and
    checks the generated index against `schema/index.schema.json`.
@@ -92,13 +104,39 @@ Boxes that have a removed app lose it on their next update, and the update scree
    - The app works with a controller under gamescope: `input` is right, Back leaves or goes back,
      text entry works with the on-screen keyboard.
    - `license` matches the real licence; for unfree apps the vendor's terms allow installing it
-     on the box. Nothing unfree is ever preinstalled or featured in an offline install.
+     on the box. Nothing unfree is ever on the ISO (`onIso`).
+   - `cache = true` only if the vendor's licence allows redistribution: every unfree package of the
+     entry has nixpkgs' `unfreeRedistributable` licence (`nix flake check` enforces it) and the
+     vendor's terms agree. Plex-style apps stay `false`.
+   - Terms: `terms.text` is the vendor's current full text (nothing paraphrased), `version`, `url`
+     and `retrieved` are right, and the file is named `<id>-<version>.txt`.
+   - `dataPaths` lists every directory the app writes under a profile's home (check on a box:
+     `~/.config`, `~/.local/share`, `~/.cache`, dotfiles), and nothing shared with other apps.
    - The icon resolves on a box: `desktopId` matches the installed `.desktop` file and `siteUrl`
      serves a usable icon (or `firefoxProfile` is set).
    - `sizeMiB` measured on a box (`nix path-info -S` of the closure minus what the box already has).
    - Name, summary and description are user-facing English, no marketing.
 4. Merge, then bump `hinteros-catalog` in the system repo's `flake.lock` on `beta`. CI builds and
-   caches every free entry; boxes on `beta` see the app after their next update.
+   caches every free entry and every `cache = true` entry; boxes on `beta` see the app after their next update.
+
+## Refreshing vendor terms
+
+Vendors revise their terms; the box shows the text from the catalog, so it must be kept current.
+Review each terms-bearing entry (Steam, Plex) at least every release and whenever a vendor
+announces a change:
+
+1. Open `terms.url` and note the version or "last updated"/"revised" date on the page.
+2. If it differs from `terms.version`: save the page's agreement text as plain text (headings and
+   paragraphs preserved, no navigation, scripts or footers) as `apps/terms/<id>-<new version>.txt`.
+   Never paraphrase or hand-edit the vendor's wording. If the text cannot be fetched, do not
+   invent it: keep the old version and open an issue.
+3. In the entry, set `terms.version`, `terms.retrieved` (today) and `terms.text`; `git rm` the old
+   file.
+4. Read the diff against the old text for changes that affect the install decision (new
+   licence restrictions, redistribution, subscription terms) and revisit `cache` and the
+   description if so.
+5. `nix flake check`. A new `version` makes boxes ask for acceptance again on the next install of
+   that app (the box records the accepted version).
 
 ## Development
 
