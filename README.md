@@ -9,7 +9,7 @@ never fetch this repo on their own. Unfree apps are listed here but only redistr
 cached: Plex is fetched from the vendor and built on the box; Steam (`unfreeRedistributable`) is
 the one explicit exception (`cache = true`).
 
-License: GPL-3.0-only.
+License: GPL-3.0-only, except the vendor terms in `apps/terms/`, which belong to their vendors (see `apps/terms/NOTICE`).
 
 ## Layout
 
