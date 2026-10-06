@@ -18,6 +18,8 @@
   # Only the shared Firefox; nothing app-specific is downloaded.
   sizeMiB = 1;
   icon = {
+    # YouTube's own web app manifest (https://www.youtube.com/manifest.webmanifest), 192x192 PNG on Google's gstatic.com. Checked 2026-10-06.
+    iconUrl = "https://www.gstatic.com/youtube/img/branding/favicon/favicon_192x192_v2.png";
     # Use the favicon Firefox stored in the kiosk profile.
     firefoxProfile = true;
   };

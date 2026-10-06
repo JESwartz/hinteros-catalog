@@ -14,7 +14,11 @@
     redistributable = true;
   };
   sizeMiB = 250;
-  icon.desktopId = "org.jellyfin.JellyfinDesktop";
+  icon = {
+    desktopId = "org.jellyfin.JellyfinDesktop";
+    # Jellyfin's official branding repo, https://github.com/jellyfin/jellyfin-ux (branding/SVG/icon-transparent.svg). Square SVG. Checked 2026-10-06.
+    iconUrl = "https://raw.githubusercontent.com/jellyfin/jellyfin-ux/master/branding/SVG/icon-transparent.svg";
+  };
   onIso = true;
   # Qt app: settings, saved servers and logins, web cache. Names differ between jellyfin-desktop
   # and its predecessor jellyfin-media-player: listing a path that does not exist is harmless.

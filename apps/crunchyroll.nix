@@ -17,6 +17,9 @@
   # Only the shared Firefox; nothing app-specific is downloaded.
   sizeMiB = 1;
   icon = {
+    # No iconUrl, checked 2026-10-06: Crunchyroll publishes no press kit or stable public icon URL, and
+    # its site and CDN answer non-browser requests with 403 (Cloudflare challenge), so a box could not
+    # download one either. The Firefox profile favicon and the letter tile cover it.
     # crunchyroll.com refuses non-browser icon fetches (403): use the favicon Firefox stored.
     firefoxProfile = true;
   };

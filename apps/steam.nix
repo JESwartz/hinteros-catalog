@@ -25,6 +25,8 @@
   icon = {
     desktopId = "steam";
     siteUrl = "https://store.steampowered.com";
+    # Valve's own store site (share_steam_logo.png, 512x512 PNG; the Steam brand page https://partner.steamgames.com/doc/marketing/branding links no stable icon file). Checked 2026-10-06.
+    iconUrl = "https://store.steampowered.com/public/shared/images/responsive/share_steam_logo.png";
   };
   requires = [ "graphics32" ];
   installer = true;

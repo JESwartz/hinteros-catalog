@@ -19,6 +19,8 @@
   icon = {
     # about:home has no favicon of its own: use the Mozilla site's.
     siteUrl = "https://www.mozilla.org";
+    # Mozilla's official Firefox source repo, https://github.com/mozilla-firefox/firefox (browser/branding/official/content/about-logo@2x.png, 384x384 PNG). Checked 2026-10-06.
+    iconUrl = "https://raw.githubusercontent.com/mozilla-firefox/firefox/main/browser/branding/official/content/about-logo@2x.png";
   };
   onIso = true;
   installerDefault = true;

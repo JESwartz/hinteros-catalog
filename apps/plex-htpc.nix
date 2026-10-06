@@ -20,6 +20,8 @@
   icon = {
     desktopId = "plex-htpc";
     siteUrl = "https://www.plex.tv";
+    # Plex's own site: web app manifest of watch.plex.tv (where www.plex.tv redirects), icon-512x512.png, 512x512 PNG. plex.tv has no public press-kit page. Checked 2026-10-06.
+    iconUrl = "https://watch.plex.tv/icons/icon-512x512.png";
   };
   installer = true;
   # Never cached: Plex HTPC is not redistributable.
