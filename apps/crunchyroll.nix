@@ -17,10 +17,11 @@
   # Only the shared Firefox; nothing app-specific is downloaded.
   sizeMiB = 1;
   icon = {
-    # No iconUrl, checked 2026-10-06: Crunchyroll publishes no press kit or stable public icon URL, and
-    # its site and CDN answer non-browser requests with 403 (Cloudflare challenge), so a box could not
-    # download one either. The Firefox profile favicon and the letter tile cover it.
-    # crunchyroll.com refuses non-browser icon fetches (403): use the favicon Firefox stored.
+    # No iconUrl, re-checked 2026-10-07: with a browser User-Agent www.crunchyroll.com serves its page but
+    # declares no favicon, apple-touch-icon or web app manifest; /favicon.ico, /apple-touch-icon.png and
+    # /manifest.json answer 403 (Cloudflare) to plain requests; static.crunchyroll.com/cxweb/assets/img/favicon.ico
+    # is an empty (0 byte) file. The only public image is og-image.png, a 1958x1672 social card, not an icon.
+    # So the favicon Firefox stores in the kiosk profile (below) and the letter tile cover it.
     firefoxProfile = true;
   };
   onIso = true;
