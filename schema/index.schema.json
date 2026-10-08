@@ -2,12 +2,12 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://justsomeshed.com/JSwartz/HinterOS/hinteros-catalog/schema/index.schema.json",
   "title": "HinterOS catalog index",
-  "description": "Generated from apps/*.nix by lib.mkIndex (indexVersion 2). Read by the session daemon and the launcher's Store UI. Receivers ignore unknown fields and treat unknown enum values as documented.",
+  "description": "Generated from apps/*.nix by lib.mkIndex (indexVersion 3). Read by the session daemon and the launcher's Store UI. Receivers ignore unknown fields and treat unknown enum values as documented.",
   "type": "object",
   "additionalProperties": false,
   "required": ["indexVersion", "apps"],
   "properties": {
-    "indexVersion": { "const": 2 },
+    "indexVersion": { "const": 3 },
     "apps": {
       "type": "array",
       "items": {
@@ -34,9 +34,9 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "id", "name", "summary", "description", "category", "homepage", "kind", "sizeMiB",
-        "icon", "requires", "depends", "conflicts", "installer", "onIso", "installerDefault",
-        "dataPaths", "terms", "status", "statusReason", "buildsOnDevice", "free", "redistributable"
+        "id", "kind", "type", "name", "summary", "description", "category", "homepage", "sizeMiB",
+        "icon", "box", "starter", "onIso", "depends", "conflicts", "dataPaths", "terms", "status",
+        "statusReason", "buildsOnDevice", "free", "redistributable", "cache"
       ],
       "properties": {
         "id": { "$ref": "#/$defs/Id" },
@@ -49,8 +49,12 @@
         },
         "homepage": { "$ref": "#/$defs/Https" },
         "kind": {
-          "description": "As in apps.list. Unknown values: native.",
-          "enum": ["native", "web"]
+          "description": "Entry kind. Apps are installed per profile and shown in the Store; services are box-wide, admin only, and shown in the Server section. Unknown values: ignore the entry.",
+          "enum": ["app", "service"]
+        },
+        "type": {
+          "description": "web and native as in apps.list; service for kind = service. Unknown values: native.",
+          "enum": ["native", "web", "service"]
         },
         "sizeMiB": { "type": "integer", "minimum": 1, "description": "Approximate download plus disk use" },
         "icon": {
@@ -64,24 +68,24 @@
             "firefoxProfile": { "type": "boolean" }
           }
         },
-        "requires": { "type": "array", "items": { "enum": ["graphics32"] } },
-        "depends": { "type": "array", "items": { "$ref": "#/$defs/Id" } },
-        "conflicts": { "type": "array", "items": { "$ref": "#/$defs/Id" } },
-        "installer": {
-          "type": "boolean",
-          "description": "Listed in the installer's and first-boot wizard's app selection (always true for onIso apps; other apps appear when online)"
+        "box": {
+          "type": "array",
+          "description": "Box features the app needs; the system turns them on box-wide when any profile has the app. Always empty for services",
+          "items": { "enum": ["graphics32", "steam-devices"] }
+        },
+        "starter": {
+          "description": "Installer app step: null (Store only), offered (listed) or ticked (listed and pre-selected; implies onIso). Always null for services",
+          "enum": [null, "offered", "ticked"]
         },
         "onIso": {
           "type": "boolean",
-          "description": "Ships on the ISO, so an offline install can select it"
+          "description": "Ships on the ISO, so an offline install can select it. Always false for services"
         },
-        "installerDefault": {
-          "type": "boolean",
-          "description": "Pre-selected in the app selection. Still an ordinary app: it can be removed later"
-        },
+        "depends": { "type": "array", "items": { "$ref": "#/$defs/Id" } },
+        "conflicts": { "type": "array", "items": { "$ref": "#/$defs/Id" } },
         "dataPaths": {
           "type": "array",
-          "description": "Paths relative to a profile's home that hold the app's data; deleted in every profile when the user removes the app and chooses to delete its data",
+          "description": "Paths relative to a profile's home that hold the app's data; deleted in the removing profile's home only, when the user removes the app and chooses to delete its data",
           "items": { "$ref": "#/$defs/HomePath" }
         },
         "terms": {
@@ -109,15 +113,17 @@
           "description": "Unfree and not cached: fetched from the vendor and built on the box during install. Unfree apps with cache = true (Steam) come from the binary cache"
         },
         "free": { "type": "boolean" },
-        "redistributable": { "type": "boolean" }
+        "redistributable": { "type": "boolean" },
+        "cache": { "type": "boolean", "description": "Unfree and cached (Steam): a download like a free entry" }
       }
     },
     "RemovedApp": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "name", "status", "statusReason"],
+      "required": ["id", "kind", "name", "status", "statusReason"],
       "properties": {
         "id": { "$ref": "#/$defs/Id" },
+        "kind": { "enum": ["app", "service"] },
         "name": { "type": "string", "minLength": 1, "maxLength": 40 },
         "status": { "const": "removed" },
         "statusReason": { "type": "string", "minLength": 1, "maxLength": 200 }

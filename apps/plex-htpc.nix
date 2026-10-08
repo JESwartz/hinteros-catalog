@@ -1,7 +1,7 @@
 # Plex HTPC: unfree and not redistributable, native. Never cached, never in the ISO: nixpkgs'
 # derivation downloads the snap from Snapcraft on the box and repackages it there.
 {
-  format = 2;
+  format = 3;
   name = "Plex";
   summary = "Watch your Plex libraries with Plex's TV interface.";
   description = ''
@@ -23,7 +23,6 @@
     # Plex's own site: web app manifest of watch.plex.tv (where www.plex.tv redirects), icon-512x512.png, 512x512 PNG. plex.tv has no public press-kit page. Checked 2026-10-06.
     iconUrl = "https://watch.plex.tv/icons/icon-512x512.png";
   };
-  installer = true;
   # Never cached: Plex HTPC is not redistributable.
   cache = false;
 

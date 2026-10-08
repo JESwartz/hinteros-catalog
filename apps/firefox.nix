@@ -1,7 +1,7 @@
 # Firefox: free, the plain browser in a Firefox kiosk profile (address bar and tabs stay; the
 # compositor shows it fullscreen). On the ISO and pre-selected in the installer.
 {
-  format = 2;
+  format = 3;
   name = "Firefox";
   summary = "Browse the web on the TV, with a controller or keyboard.";
   description = ''
@@ -23,7 +23,7 @@
     iconUrl = "https://raw.githubusercontent.com/mozilla-firefox/firefox/main/browser/branding/official/content/about-logo@2x.png";
   };
   onIso = true;
-  installerDefault = true;
+  starter = "ticked";
   # Bookmarks, history, logins and add-ons of the kiosk profile.
   dataPaths = [ ".local/share/hinteros/firefox/firefox" ];
 

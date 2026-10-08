@@ -32,10 +32,19 @@
         # Unfree package names allowed in the binary cache and the ISO build despite
         # `forbidUnfree`: entries with `cache = true` (nixpkgs-checked unfreeRedistributable).
         cacheableUnfree = catalogLib.cacheableUnfreeOf self.catalog;
+        # Only the apps / only the services of the catalog.
+        appsOnly = catalogLib.appsOnlyOf self.catalog;
+        services = catalogLib.servicesOf self.catalog;
+        # Union of box features the given app ids need (sorted); throws on unknown ids.
+        featuresOf = catalogLib.featuresOfIn self.catalog;
+        # The installer's app step: { offered; ticked; onIso; } as id lists.
+        starterDefaults = catalogLib.starterDefaultsOf self.catalog;
+        # { <id> = { name, kind, status, statusReason }; }, without evaluating any package.
+        catalogIds = catalogLib.catalogIdsOf self.catalog;
       };
 
       # Every entry, validated and normalized: { <id> = entry; }. Evaluating it throws with every
-      # problem if any entry is invalid. Metadata is plain data; `app`, `nixos` and `packages`
+      # problem if any entry is invalid. Metadata is plain data; `app`, `service` and `packages`
       # are functions the system repo calls with its own pkgs.
       catalog = catalogLib.load ./apps;
 
@@ -101,6 +110,7 @@
         nixos = import ./tests/nixos.nix {
           inherit pkgs nixpkgs;
           inherit (self) catalog;
+          inherit (catalogLib) features;
         };
       };
 
