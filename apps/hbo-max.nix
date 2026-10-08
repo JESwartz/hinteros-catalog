@@ -21,7 +21,7 @@
     iconUrl = "https://www.hbomax.com/dotcom/img/hbomax/apple-touch-icon.png";
     firefoxProfile = true;
   };
-  onIso = true;
+  onIso = false; # Store only: in format 2, onIso would also list it in the installer
   # The kiosk profile (cookies, login, Widevine) lives in one directory per app.
   dataPaths = [ ".local/share/hinteros/firefox/hbo-max" ];
 

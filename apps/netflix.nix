@@ -20,7 +20,7 @@
     # No iconUrl, checked 2026-10-07: its icons are 64 px (apple-touch-icon nficon2016.png), below the 192 px minimum; the site serves no larger one.
     firefoxProfile = true;
   };
-  onIso = true;
+  onIso = false; # Store only: in format 2, onIso would also list it in the installer
   # The kiosk profile (cookies, login, Widevine) lives in one directory per app.
   dataPaths = [ ".local/share/hinteros/firefox/netflix" ];
 

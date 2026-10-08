@@ -20,7 +20,7 @@
     # No iconUrl, checked 2026-10-07: its largest icon is a 152 px apple-touch-icon, below the 192 px minimum.
     firefoxProfile = true;
   };
-  onIso = true;
+  onIso = false; # Store only: in format 2, onIso would also list it in the installer
   # The kiosk profile (cookies, login, Widevine) lives in one directory per app.
   dataPaths = [ ".local/share/hinteros/firefox/prime-video" ];
 
