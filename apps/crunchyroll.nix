@@ -24,7 +24,7 @@
     # So the favicon Firefox stores in the kiosk profile (below) and the letter tile cover it.
     firefoxProfile = true;
   };
-  onIso = true;
+  onIso = false; # Store only: in format 2, onIso would also list it in the installer
   # The kiosk profile (cookies, login, Widevine) lives in one directory per app.
   dataPaths = [ ".local/share/hinteros/firefox/crunchyroll" ];
 
