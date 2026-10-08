@@ -35,7 +35,7 @@
       "additionalProperties": false,
       "required": [
         "id", "kind", "type", "name", "summary", "description", "category", "homepage", "sizeMiB",
-        "icon", "box", "starter", "onIso", "depends", "conflicts", "dataPaths", "terms", "status",
+        "icon", "box", "starter", "onIso", "depends", "needsServices", "conflicts", "dataPaths", "terms", "status",
         "statusReason", "buildsOnDevice", "free", "redistributable", "cache"
       ],
       "properties": {
@@ -82,6 +82,11 @@
           "description": "Ships on the ISO, so an offline install can select it. Always false for services"
         },
         "depends": { "type": "array", "items": { "$ref": "#/$defs/Id" } },
+        "needsServices": {
+          "type": "array",
+          "description": "Ids of kind=service entries this app needs. While one is not installed, show the app with red text (needs the X server; the admin profile can install it in Server) and disable Install. Always empty for services",
+          "items": { "$ref": "#/$defs/Id" }
+        },
         "conflicts": { "type": "array", "items": { "$ref": "#/$defs/Id" } },
         "dataPaths": {
           "type": "array",

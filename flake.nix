@@ -37,6 +37,8 @@
         services = catalogLib.servicesOf self.catalog;
         # Union of box features the given app ids need (sorted); throws on unknown ids.
         featuresOf = catalogLib.featuresOfIn self.catalog;
+        # Sorted service ids the given app ids need (needsServices); throws on unknown ids.
+        servicesNeededBy = catalogLib.servicesNeededBy self.catalog;
         # The installer's app step: { offered; ticked; onIso; } as id lists.
         starterDefaults = catalogLib.starterDefaultsOf self.catalog;
         # { <id> = { name, kind, status, statusReason }; }, without evaluating any package.

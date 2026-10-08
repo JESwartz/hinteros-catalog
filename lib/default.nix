@@ -194,6 +194,11 @@ let
       check = listOf isId;
       what = "a list of entry ids";
     };
+    needsServices = {
+      default = [ ];
+      check = listOf isId;
+      what = "a list of service entry ids";
+    };
     conflicts = {
       default = [ ];
       check = listOf isId;
@@ -468,6 +473,7 @@ let
           ++ lib.optional (e ? box) "box: only for apps (a service is box-wide already)"
           ++ lib.optional (e ? starter) "starter: only for apps"
           ++ lib.optional (e ? onIso) "onIso: only for apps"
+          ++ lib.optional (e ? needsServices) "needsServices: only for apps (a service cannot need a service)"
         else
           lib.optional (full.app == null) "app: required for kind = \"app\" (or status = \"removed\")"
           ++ lib.optional (
@@ -534,6 +540,15 @@ let
         )
         ++ map (d: "${id}: a ${e.kind} cannot depend on ${d}, which is a ${entries.${d}.kind}") (
           lib.filter (d: entries ? ${d} && entries.${d}.kind != e.kind) e.depends
+        )
+        ++ map (d: "${id}: needsServices: unknown entry ${d}") (
+          lib.filter (d: !(entries ? ${d})) e.needsServices
+        )
+        ++ map (d: "${id}: needsServices: ${d} is a ${entries.${d}.kind}, not a service") (
+          lib.filter (d: entries ? ${d} && entries.${d}.kind != "service") e.needsServices
+        )
+        ++ map (d: "${id}: needsServices: ${d} is removed") (
+          lib.filter (d: entries ? ${d} && entries.${d}.status == "removed") e.needsServices
         )
         ++ map (d: "${id}: onIso but depends on ${d}, which is not onIso") (
           lib.filter (d: e.onIso && entries ? ${d} && !entries.${d}.onIso) e.depends
@@ -679,6 +694,7 @@ let
           starter
           onIso
           depends
+          needsServices
           conflicts
           dataPaths
           status
@@ -727,6 +743,19 @@ let
     lib.sort lib.lessThan (
       lib.unique (
         lib.concatMap (id: (catalog.${id} or (throw "hinteros-catalog: unknown entry ${id}")).box) ids
+      )
+    );
+
+  # The service ids the given app ids need, sorted and unique. The Store disables Install (red
+  # "needs the X server, the admin profile can install it in Server") while one is not installed,
+  # and the privileged service refuses the install. Unknown ids throw, as in featuresOfIn.
+  servicesNeededBy =
+    catalog: ids:
+    lib.sort lib.lessThan (
+      lib.unique (
+        lib.concatMap (
+          id: (catalog.${id} or (throw "hinteros-catalog: unknown entry ${id}")).needsServices
+        ) ids
       )
     );
 
@@ -786,6 +815,7 @@ in
     appsOnlyOf
     servicesOf
     featuresOfIn
+    servicesNeededBy
     starterDefaultsOf
     catalogIdsOf
     ;

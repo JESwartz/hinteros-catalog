@@ -701,6 +701,101 @@ let
           });
         };
       };
+    # needsServices: apps may need services (not depends, which stays within a kind).
+    testNeedsServicesValid = {
+      expr = catalogLib.validate {
+        a = good // {
+          needsServices = [ "s" ];
+        };
+        s = goodService;
+      };
+      expected = { };
+    };
+    testNeedsServicesUnknown = {
+      expr = catalogLib.validate {
+        a = good // {
+          needsServices = [ "missing" ];
+        };
+      };
+      expected = {
+        _catalog = [ "a: needsServices: unknown entry missing" ];
+      };
+    };
+    testNeedsServicesPointsAtApp = {
+      expr = catalogLib.validate {
+        a = good // {
+          needsServices = [ "b" ];
+        };
+        b = good;
+      };
+      expected = {
+        _catalog = [ "a: needsServices: b is a app, not a service" ];
+      };
+    };
+    testNeedsServicesOnService = {
+      expr = problems "example" (goodService // { needsServices = [ "s" ]; });
+      expected = [ "needsServices: only for apps (a service cannot need a service)" ];
+    };
+    testAppDependsOnServiceStillRefused = {
+      expr = catalogLib.validate {
+        a = good // {
+          depends = [ "s" ];
+        };
+        s = goodService;
+      };
+      expected = {
+        _catalog = [ "a: a app cannot depend on s, which is a service" ];
+      };
+    };
+    testServicesNeededBy = {
+      expr =
+        let
+          cat = lib.mapAttrs catalogLib.normalize {
+            a = good // {
+              needsServices = [
+                "s2"
+                "s1"
+              ];
+            };
+            b = good // {
+              needsServices = [ "s1" ];
+            };
+            c = good;
+            s1 = goodService;
+            s2 = goodService;
+          };
+        in
+        {
+          some = catalogLib.servicesNeededBy cat [
+            "a"
+            "b"
+          ];
+          none = catalogLib.servicesNeededBy cat [ "c" ];
+          index = map (e: e.needsServices or null) (catalogLib.mkIndex cat).apps;
+        };
+      expected = {
+        some = [
+          "s1"
+          "s2"
+        ];
+        none = [ ];
+        index = [
+          [
+            "s2"
+            "s1"
+          ]
+          [ "s1" ]
+          [ ]
+          [ ]
+          [ ]
+        ];
+      };
+    };
+    testServicesNeededByUnknownThrows = {
+      expr =
+        (builtins.tryEval (builtins.deepSeq (catalogLib.servicesNeededBy { } [ "nope" ]) true)).success;
+      expected = false;
+    };
     testFeaturesOfUnknownThrows = {
       expr = (builtins.tryEval (builtins.deepSeq (catalogLib.featuresOfIn { } [ "nope" ]) true)).success;
       expected = false;

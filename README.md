@@ -65,6 +65,7 @@ M10); it is never in the Store. See [How to add an app](#adding-an-app-or-a-serv
 | `statusReason` | if not available | One line shown to users who have the app |
 | `depends`, `conflicts` | no | Other ids of the same kind. Installing adds dependencies; conflicting apps cannot be installed together |
 | `starter` | no (apps) | `null` (default: Store only), `"offered"` (listed in the installer's app step) or `"ticked"` (listed and pre-selected; needs `onIso`). The installer's picks are the starter set, copied into every new profile and guest session. Offered: YouTube, Jellyfin, Firefox, Steam; ticked: YouTube, Firefox |
+| `needsServices` | no (apps) | Ids of `kind = "service"` entries the app needs (e.g. `[ "jellyfin-server" ]`); the validator refuses unknown ids, apps, removed entries, and the field on a service. Never installed with the app: while a needed service is not installed the Store shows red text (it needs that server, the admin profile can install it in Server) and disables Install, and the privileged service refuses the install. An app's `depends` stays app-to-app. In the index; `servicesNeededBy catalog ids` returns the union |
 | `onIso` | no (apps) | Ships on the ISO, so an offline install can pick it (YouTube, Jellyfin, Firefox). Free apps only; its `depends` must be `onIso` too |
 | `cache` | no | Default `false`. `true` only for an unfree entry whose unfree packages are all `unfreeRedistributable` in nixpkgs: CI builds it, the binary cache serves it and the install is a download like a free app. Checked against nixpkgs `meta.license` by `tests/packages.nix`. Free entries are always cached and must not set it. Names go into `lib.cacheableUnfree` |
 | `terms` | unfree entries | The vendor's full terms, shown in full in the install dialog before the user accepts: `{ title; version; url; retrieved; text; }`. `version` is the vendor's version or revision date (the box records which version each profile accepted), `retrieved` the date the text was copied (`YYYY-MM-DD`), `text` a plain UTF-8 file `./terms/<id>-<version>.txt`. The index carries title, version, url, retrieved and the file name `terms/<id>-<version>.txt`; the index package installs the files next to `catalog.json` |
@@ -82,7 +83,8 @@ in the vendor cache, and nothing unfree is ever on the ISO).
 filtered by kind), `featuresOf ids` (the sorted union of `box` features of those app ids; throws
 on an unknown id), `starterDefaults` (`{ offered; ticked; onIso; }` id lists for the installer),
 `catalogIds` (`{ <id> = { name, kind, status, statusReason }; }`, evaluated without any
-package) and `cacheableUnfree`. The pure versions (`appsOnlyOf`, `servicesOf`, `featuresOfIn`,
+package), `servicesNeededBy ids` (the sorted service ids those apps need) and `cacheableUnfree`.
+The pure versions (`appsOnlyOf`, `servicesOf`, `featuresOfIn`, `servicesNeededBy`,
 `starterDefaultsOf`, `catalogIdsOf`, `cacheableUnfreeOf`) take a catalog as argument.
 ### Icons
 
