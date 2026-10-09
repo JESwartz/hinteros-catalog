@@ -1,7 +1,7 @@
 # Twitch: free (a website), Firefox kiosk. On the ISO (no vendor software is installed, only a
 # Firefox profile); Store only, not in the installer. Playback limits checked 2026-10-07: Twitch streams are not DRM-protected and play in Firefox on Linux at up to 1080p (source quality).
 {
-  format = 2;
+  format = 3;
   name = "Twitch";
   summary = "Live streams and videos, in a full-screen browser profile.";
   description = ''
@@ -20,7 +20,7 @@
     # No iconUrl, checked 2026-10-07: its site declares only 16 px and 32 px icons and no manifest.
     firefoxProfile = true;
   };
-  onIso = false; # Store only: in format 2, onIso would also list it in the installer
+  onIso = true;
   # The kiosk profile (cookies, login, Widevine) lives in one directory per app.
   dataPaths = [ ".local/share/hinteros/firefox/twitch" ];
 

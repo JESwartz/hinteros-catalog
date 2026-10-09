@@ -1,6 +1,6 @@
-# Jellyfin: free, native. On the ISO, so an offline install can pick it.
+# Jellyfin: free, native. On the ISO and offered in the installer (not pre-selected).
 {
-  format = 2;
+  format = 3;
   name = "Jellyfin";
   summary = "Watch your Jellyfin server's movies and shows.";
   description = ''
@@ -20,6 +20,7 @@
     iconUrl = "https://raw.githubusercontent.com/jellyfin/jellyfin-ux/master/branding/SVG/icon-transparent.svg";
   };
   onIso = true;
+  starter = "offered";
   # Qt app: settings, saved servers and logins, web cache. Names differ between jellyfin-desktop
   # and its predecessor jellyfin-media-player: listing a path that does not exist is harmless.
   dataPaths = [

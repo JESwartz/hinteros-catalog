@@ -1,9 +1,10 @@
-# The catalog entry format (format 2) and its validator. Pure: needs only nixpkgs' `lib`, so the
+# The catalog entry format (format 3) and its validator. Pure: needs only nixpkgs' `lib`, so the
 # system repo and the index can read entry metadata without evaluating any package.
 #
-# An entry is `apps/<id>.nix`, a plain attrset (see README.md for every field). `app` and
-# `nixos` are functions of the NixOS module arguments and are only called by the system repo
-# (and by this repo's package checks).
+# An entry is `apps/<id>.nix`, a plain attrset (see README.md for every field). `kind = "app"`
+# entries have `app`, a function of `{ pkgs, lib, box }`; `kind = "service"` entries have
+# `service`, a restricted NixOS module. Both are only called by the system repo (and by this
+# repo's package checks).
 { lib }:
 let
   inherit (builtins)
@@ -19,11 +20,20 @@ let
     stringLength
     ;
 
-  # Format 2 replaced `featured`/`preinstalled` by `installer`/`onIso`/`installerDefault`, dropped
-  # `ageRating` and added `cache`, `terms` and `dataPaths`; no format 1 entry exists any more.
-  supportedFormats = [ 2 ];
-  indexVersion = 2;
+  # Format 3 added `kind` (app/service), `box` (replacing `requires`), `service` (replacing
+  # `nixos`, services only) and `starter` (replacing `installer`/`installerDefault`); no format
+  # 1 or 2 entry exists any more.
+  supportedFormats = [ 3 ];
+  indexVersion = 3;
 
+  entryKinds = [
+    "app" # installed per profile
+    "service" # box-wide NixOS module, admin only
+  ];
+  starters = [
+    "offered" # listed in the installer's app step
+    "ticked" # listed and pre-selected (needs onIso)
+  ];
   categories = [
     "games"
     "video"
@@ -36,13 +46,26 @@ let
     "retired" # hidden from the Store; stays working where installed
     "removed" # tombstone: no module, installed copies go away on the next update
   ];
-  # System features an entry can ask for; the system repo maps each to NixOS options.
+  # Box features an app can name in `box`; the system repo maps each to NixOS options
+  # (box-features.nix). A new feature is a system-repo change.
   features = [
-    "graphics32" # 32-bit graphics drivers (hardware.graphics.enable32Bit)
+    "graphics32" # hardware.graphics.enable32Bit, services.pipewire.alsa.support32Bit
+    "steam-devices" # hardware.steam-hardware.enable (controller udev rules)
   ];
-  # Keys an entry's `app` may return: a subset of the system repo's hinteros.apps.<id>
-  # options. `enable`, `name` and the icon fields are set by the system repo from metadata;
-  # `icon` (a packaged image) and `unfreeName` are never set by an entry.
+  # What `app` receives: `{ pkgs, lib, box }` and nothing else (no `config`).
+  appArgs = [
+    "pkgs"
+    "lib"
+    "box"
+  ];
+  # Members of `box`, the box's inputs to apps (built by the system repo).
+  boxMembers = [
+    "firefoxKiosk" # the kiosk wrapper and its Firefox
+    "steam" # pkgs.steam with this box's graphics packages
+  ];
+  # Keys an entry's `app` may return: what the system repo's env builder reads. `name` and the
+  # icon fields are set from metadata; `icon` (a packaged image) and unfree allowances are never
+  # set by an entry.
   appKeys = [
     "package"
     "command"
@@ -50,6 +73,7 @@ let
     "input"
     "backKey"
     "order"
+    "listed"
   ];
   # The one non-https kiosk URL: Firefox's own start page (the `firefox` app).
   kioskUrls = [ "about:home" ];
@@ -58,15 +82,22 @@ let
     "userAgent"
     "fullscreenOnly"
   ];
-  # Top-level NixOS option namespaces an entry's `nixos` may set. No `nixpkgs` (overlays or
-  # config would change how packages are built), no `imports`/`options`, no `hinteros`.
-  nixosKeys = [
-    "programs"
-    "hardware"
+  # What a service's module function receives (the usual module arguments it may need).
+  serviceArgs = [
+    "pkgs"
+    "lib"
+    "config"
+    "options"
+  ];
+  # Top-level NixOS namespaces a service may set, narrowed below: `networking` to `firewall`,
+  # `systemd` to `services.<own unit>`. No `nixpkgs` (overlays or config would change how
+  # packages are built), `imports`, `options`, `users`, `environment` (nothing is installed for
+  # profiles) or `hinteros`.
+  serviceKeys = [
     "services"
-    "environment"
-    "xdg"
-    "fonts"
+    "hardware"
+    "networking"
+    "systemd"
   ];
 
   idPattern = "[a-z0-9][a-z0-9-]{0,31}";
@@ -97,6 +128,11 @@ let
       required = true;
       check = oneOf supportedFormats;
       what = "one of ${toString supportedFormats}";
+    };
+    kind = {
+      default = "app";
+      check = oneOf entryKinds;
+      what = "one of ${lib.concatStringsSep ", " entryKinds}";
     };
     name = {
       required = true;
@@ -148,32 +184,32 @@ let
       check = either isNull (isText 200);
       what = "null or a single-line string of at most 200 characters";
     };
-    requires = {
+    box = {
       default = [ ];
       check = listOf (oneOf features);
-      what = "a list of: ${lib.concatStringsSep ", " features}";
+      what = "a list of box features: ${lib.concatStringsSep ", " features}";
     };
     depends = {
       default = [ ];
       check = listOf isId;
-      what = "a list of app ids";
+      what = "a list of entry ids";
+    };
+    needsServices = {
+      default = [ ];
+      check = listOf isId;
+      what = "a list of service entry ids";
     };
     conflicts = {
       default = [ ];
       check = listOf isId;
-      what = "a list of app ids";
+      what = "a list of entry ids";
     };
-    installer = {
-      default = false;
-      check = isBool;
-      what = "a bool";
+    starter = {
+      default = null;
+      check = either isNull (oneOf starters);
+      what = "null or one of ${lib.concatStringsSep ", " starters}";
     };
     onIso = {
-      default = false;
-      check = isBool;
-      what = "a bool";
-    };
-    installerDefault = {
       default = false;
       check = isBool;
       what = "a bool";
@@ -201,12 +237,12 @@ let
     app = {
       default = null;
       check = either isNull isFn;
-      what = "null or a function { pkgs, lib, config, ... } -> hinteros.apps attrs";
+      what = "null or a function { pkgs, lib, box }: { package?; command?; kiosk?; ... } (apps only)";
     };
-    nixos = {
+    service = {
       default = null;
       check = either isNull isFn;
-      what = "null or a function { pkgs, lib, config, ... } -> NixOS config";
+      what = "null or a restricted NixOS module: a function of pkgs, lib, config, options, or an attrset (services only)";
     };
     packages = {
       default = null;
@@ -215,15 +251,37 @@ let
     };
   };
 
-  # Arguments used to inspect `app`/`nixos` results without evaluating packages: only the
+  # Arguments used to inspect `app`/`service` results without evaluating packages: only the
   # attribute names (and kiosk settings) are looked at, never values that depend on pkgs.
+  unavailable = what: throw "catalog: ${what} is not available while validating entry structure";
   stubArgs = {
     inherit lib;
-    pkgs = throw "catalog: pkgs is not available while validating entry structure";
-    config = throw "catalog: config is not available while validating entry structure";
-    options = throw "catalog: options is not available while validating entry structure";
+    pkgs = unavailable "pkgs";
+    box = lib.genAttrs boxMembers unavailable;
+    config = unavailable "config";
+    options = unavailable "options";
   };
-  callStub = f: if isFunction f then f stubArgs else f;
+  # Call `f` with only the arguments it names. An argument outside the allowed set still gets a
+  # (throwing) value, so it is reported by the argument check instead of crashing evaluation.
+  callStub =
+    f:
+    if isFunction f then
+      let
+        named = builtins.functionArgs f;
+      in
+      f (lib.mapAttrs (n: _: unavailable n) named // builtins.intersectAttrs named stubArgs)
+    else
+      f;
+  # Stand-in for `box` when evaluating packages outside a box (licence checks, cache builds,
+  # sizes): plain nixpkgs packages. The system repo builds the real ones.
+  boxFor = pkgs: {
+    inherit (pkgs) steam;
+    firefoxKiosk = pkgs.firefox;
+  };
+  # Names a function takes that are not in `allowed`.
+  badArgs =
+    allowed: f:
+    if isFunction f then lib.subtractLists allowed (attrNames (builtins.functionArgs f)) else [ ];
 
   # Problems with one entry on its own: a list of strings.
   checkEntry =
@@ -246,6 +304,7 @@ let
 
       full = normalize id e;
       lic = full.license;
+      isService = full.kind == "service";
       licProblems =
         let
           unknownKeys = lib.subtractLists [
@@ -330,16 +389,19 @@ let
         ) "icon.iconUrl: an https URL of the vendor's own public logo (at most 500 characters)"
         ++ lib.optional (ic ? firefoxProfile && !isBool ic.firefoxProfile) "icon.firefoxProfile: a bool"
         ++ lib.optional (
-          (ic.firefoxProfile or false) && full.kind != "web"
+          (ic.firefoxProfile or false) && full.type != "web"
         ) "icon.firefoxProfile: only for kiosk (web) apps"
         ++ lib.optional (
-          full.kind == "native" && !(ic ? desktopId)
+          full.type == "native" && !(ic ? desktopId)
         ) "icon.desktopId: required for native apps (the icon of the installed app)";
 
+      appBadArgs = badArgs appArgs full.app;
       appAttrs = callStub full.app;
       appProblems =
         if full.app == null then
           [ ]
+        else if appBadArgs != [ ] then
+          [ "app: a function of { pkgs, lib, box } only (not ${lib.concatStringsSep ", " appBadArgs})" ]
         else if !isAttrs appAttrs then
           [ "app: must return an attrset" ]
         else
@@ -365,45 +427,82 @@ let
               "gamepad"
               "keyboard"
             ]
-          ) "app.input: gamepad or keyboard";
+          ) "app.input: gamepad or keyboard"
+          ++ lib.optional (appAttrs ? listed && !isBool appAttrs.listed) "app.listed: a bool";
 
-      nixosAttrs = callStub full.nixos;
-      nixosProblems =
-        if full.nixos == null then
+      serviceBadArgs = badArgs serviceArgs full.service;
+      serviceAttrs = callStub full.service;
+      serviceProblems =
+        if full.service == null then
           [ ]
-        else if !isAttrs nixosAttrs then
-          [ "nixos: must return an attrset" ]
+        else if serviceBadArgs != [ ] then
+          [
+            "service: a module function of ${lib.concatStringsSep ", " serviceArgs} only (not ${lib.concatStringsSep ", " serviceBadArgs})"
+          ]
+        else if !isAttrs serviceAttrs then
+          [ "service: must return an attrset" ]
         else
           let
-            bad = lib.subtractLists nixosKeys (attrNames nixosAttrs);
+            bad = lib.subtractLists serviceKeys (attrNames serviceAttrs);
+            badNet = lib.subtractLists [ "firewall" ] (attrNames (serviceAttrs.networking or { }));
+            systemd = serviceAttrs.systemd or { };
+            badSystemd = lib.subtractLists [ "services" ] (attrNames systemd);
+            # `systemd.services.<own unit>`: a unit named after one of the module's own
+            # `services.<name>` (jellyfin, tailscale -> tailscaled).
+            owners = attrNames (serviceAttrs.services or { });
+            badUnits = lib.filter (u: !lib.any (o: lib.hasPrefix o u) owners) (
+              attrNames (systemd.services or { })
+            );
           in
           lib.optional (bad != [ ])
-            "nixos: top-level key(s) not allowed: ${lib.concatStringsSep ", " bad} (allowed: ${lib.concatStringsSep ", " nixosKeys})";
+            "service: top-level key(s) not allowed: ${lib.concatStringsSep ", " bad} (allowed: services, hardware, networking.firewall, systemd.services.<own unit>)"
+          ++
+            lib.optional (badNet != [ ])
+              "service: networking.${lib.concatStringsSep ", networking." badNet} not allowed (only networking.firewall)"
+          ++
+            lib.optional (badSystemd != [ ])
+              "service: systemd.${lib.concatStringsSep ", systemd." badSystemd} not allowed (only systemd.services.<own unit>)"
+          ++
+            lib.optional (badUnits != [ ])
+              "service: systemd.services.${lib.concatStringsSep ", systemd.services." badUnits} is not the module's own unit (named after one of its services.<name>)";
+
+      kindProblems =
+        if isService then
+          lib.optional (full.service == null) "service: required for kind = \"service\""
+          ++ lib.optional (full.app != null) "app: only for kind = \"app\" (a service has `service`)"
+          ++ lib.optional (e ? box) "box: only for apps (a service is box-wide already)"
+          ++ lib.optional (e ? starter) "starter: only for apps"
+          ++ lib.optional (e ? onIso) "onIso: only for apps"
+          ++ lib.optional (e ? needsServices) "needsServices: only for apps (a service cannot need a service)"
+        else
+          lib.optional (full.app == null) "app: required for kind = \"app\" (or status = \"removed\")"
+          ++ lib.optional (
+            full.service != null
+          ) "service: only for kind = \"service\" (an app has `app` and `box`)";
 
       crossField =
-        lib.optional (full.app == null && full.nixos == null) "needs app or nixos (or status = \"removed\")"
-        ++ lib.optional (
+        lib.optional (
           full.status != "available" && full.statusReason == null
         ) "statusReason: required when status is ${full.status}"
-        ++ lib.optional (elem id full.depends) "depends: an app cannot depend on itself"
-        ++ lib.optional (elem id full.conflicts) "conflicts: an app cannot conflict with itself"
+        ++ lib.optional (elem id full.depends) "depends: an entry cannot depend on itself"
+        ++ lib.optional (elem id full.conflicts) "conflicts: an entry cannot conflict with itself"
         ++ lib.optional (
           full.onIso && !lic.free
         ) "onIso: only free apps (the ISO never contains unfree software)"
         ++ lib.optional (
-          full.installerDefault && !full.onIso
-        ) "installerDefault: the app must also be onIso, so an offline install can pick it"
+          full.starter == "ticked" && !full.onIso
+        ) "starter: \"ticked\" needs onIso, so an offline install can pick it"
         ++ lib.optional (
-          (full.installer || full.onIso || full.installerDefault) && full.status != "available"
-        ) "installer/onIso/installerDefault: only available apps"
+          (full.starter != null || full.onIso) && full.status != "available"
+        ) "starter/onIso: only available apps"
         ++ lib.optional (
           full.cache && lic.free
-        ) "cache: only for unfree apps (free apps are always in the binary cache)"
+        ) "cache: only for unfree entries (free ones are always in the binary cache)"
         ++ lib.optional (
           full.cache && !lic.redistributable
-        ) "cache: only unfreeRedistributable apps may be cached (license.redistributable = true)"
+        ) "cache: only unfreeRedistributable entries may be cached (license.redistributable = true)"
         ++ lib.optional (
-          full.kind == "web" && !elem ".local/share/hinteros/firefox/${id}" full.dataPaths
+          full.type == "web" && !elem ".local/share/hinteros/firefox/${id}" full.dataPaths
         ) "dataPaths: a kiosk (web) app must list its Firefox profile, .local/share/hinteros/firefox/${id}";
     in
     lib.optional (!isId id) "id: must match ${idPattern} (the file name without .nix)"
@@ -411,11 +510,17 @@ let
     ++ lib.optional (unknown != [ ]) "unknown field(s): ${lib.concatStringsSep ", " unknown}"
     ++ map (n: "${n}: must be ${fields.${n}.what}") invalid
     ++ lib.optionals (missing == [ ] && invalid == [ ] && !tombstone) (
-      licProblems ++ termsProblems ++ iconProblems ++ appProblems ++ nixosProblems ++ crossField
+      licProblems
+      ++ termsProblems
+      ++ iconProblems
+      ++ kindProblems
+      ++ appProblems
+      ++ serviceProblems
+      ++ crossField
     )
     ++ lib.optional (
-      tombstone && (e.app or null != null || e.nixos or null != null)
-    ) "a removed entry has no app or nixos";
+      tombstone && (e.app or null != null || e.service or null != null)
+    ) "a removed entry has no app or service";
 
   # Problems between entries.
   checkCatalog =
@@ -423,13 +528,27 @@ let
     lib.concatLists (
       lib.mapAttrsToList (
         id: e:
-        map (d: "${id}: depends on unknown app ${d}") (lib.filter (d: !(entries ? ${d})) e.depends)
+        map (d: "${id}: depends on unknown entry ${d}") (lib.filter (d: !(entries ? ${d})) e.depends)
         ++ map (d: "${id}: depends on ${d}, which is ${entries.${d}.status}") (
           lib.filter (d: entries ? ${d} && entries.${d}.status == "removed") e.depends
         )
-        ++ map (c: "${id}: conflicts with unknown app ${c}") (lib.filter (c: !(entries ? ${c})) e.conflicts)
+        ++ map (c: "${id}: conflicts with unknown entry ${c}") (
+          lib.filter (c: !(entries ? ${c})) e.conflicts
+        )
         ++ map (d: "${id}: depends on ${d} but also conflicts with it") (
           lib.intersectLists e.depends e.conflicts
+        )
+        ++ map (d: "${id}: a ${e.kind} cannot depend on ${d}, which is a ${entries.${d}.kind}") (
+          lib.filter (d: entries ? ${d} && entries.${d}.kind != e.kind) e.depends
+        )
+        ++ map (d: "${id}: needsServices: unknown entry ${d}") (
+          lib.filter (d: !(entries ? ${d})) e.needsServices
+        )
+        ++ map (d: "${id}: needsServices: ${d} is a ${entries.${d}.kind}, not a service") (
+          lib.filter (d: entries ? ${d} && entries.${d}.kind != "service") e.needsServices
+        )
+        ++ map (d: "${id}: needsServices: ${d} is removed") (
+          lib.filter (d: entries ? ${d} && entries.${d}.status == "removed") e.needsServices
         )
         ++ map (d: "${id}: onIso but depends on ${d}, which is not onIso") (
           lib.filter (d: e.onIso && entries ? ${d} && !entries.${d}.onIso) e.depends
@@ -462,12 +581,17 @@ let
     // {
       inherit id;
       license = lic;
-      kind = if isAttrs appAttrs && appAttrs ? kiosk then "web" else "native";
-      # The ISO and the binary cache never contain unfree software, except apps that opt in with
+      # `kind` is the entry kind; `type` what the entry is: web/native apps, or a service.
+      type =
+        if withDefaults.kind == "service" then
+          "service"
+        else if isAttrs appAttrs && appAttrs ? kiosk then
+          "web"
+        else
+          "native";
+      # The ISO and the binary cache never contain unfree software, except entries that opt in with
       # `cache` (checked to be unfreeRedistributable): everything else unfree is built on the box.
       buildsOnDevice = !(lic.free or true) && !withDefaults.cache;
-      # Apps on the ISO are always offered in the installer (offline), others only when online.
-      installer = withDefaults.installer || withDefaults.onIso;
       icon =
         lib.optionalAttrs (withDefaults.status != "removed") { siteUrl = withDefaults.homepage; }
         // withDefaults.icon;
@@ -479,7 +603,12 @@ let
           let
             a =
               if isFunction withDefaults.app then
-                withDefaults.app (stubArgs // { inherit pkgs; })
+                withDefaults.app (
+                  builtins.intersectAttrs (builtins.functionArgs withDefaults.app) {
+                    inherit lib pkgs;
+                    box = boxFor pkgs;
+                  }
+                )
               else
                 withDefaults.app;
           in
@@ -543,6 +672,7 @@ let
       {
         inherit (e)
           id
+          kind
           name
           status
           statusReason
@@ -552,23 +682,25 @@ let
       {
         inherit (e)
           id
+          kind
+          type
           name
           summary
           category
           homepage
-          kind
           sizeMiB
           icon
-          requires
-          depends
-          conflicts
-          installer
+          box
+          starter
           onIso
-          installerDefault
+          depends
+          needsServices
+          conflicts
           dataPaths
           status
           statusReason
           buildsOnDevice
+          cache
           ;
         inherit (e.license) free redistributable;
         description = reflow e.description;
@@ -600,6 +732,61 @@ let
       )
     );
 
+  # Views of a loaded catalog for the system repo.
+  appsOnlyOf = lib.filterAttrs (_: e: e.kind == "app");
+  servicesOf = lib.filterAttrs (_: e: e.kind == "service");
+
+  # The union of box features the given app ids need, sorted. Unknown ids throw: callers
+  # validate ids first, and a silent [] would drop a feature.
+  featuresOfIn =
+    catalog: ids:
+    lib.sort lib.lessThan (
+      lib.unique (
+        lib.concatMap (id: (catalog.${id} or (throw "hinteros-catalog: unknown entry ${id}")).box) ids
+      )
+    );
+
+  # The service ids the given app ids need, sorted and unique. The Store disables Install (red
+  # "needs the X server, the admin profile can install it in Server") while one is not installed,
+  # and the privileged service refuses the install. Unknown ids throw, as in featuresOfIn.
+  servicesNeededBy =
+    catalog: ids:
+    lib.sort lib.lessThan (
+      lib.unique (
+        lib.concatMap (
+          id: (catalog.${id} or (throw "hinteros-catalog: unknown entry ${id}")).needsServices
+        ) ids
+      )
+    );
+
+  # The installer's app step: ids of available apps with `starter` set, sorted. `offered` lists
+  # everything the installer shows (ticked ones included), `ticked` the pre-selected subset,
+  # `onIso` the ones that ship on the ISO (usable offline).
+  starterDefaultsOf =
+    catalog:
+    let
+      apps = lib.filter (e: e.kind == "app" && e.status == "available") (lib.attrValues catalog);
+      idsWhere = p: lib.sort lib.lessThan (map (e: e.id) (lib.filter p apps));
+    in
+    {
+      offered = idsWhere (e: e.starter != null);
+      ticked = idsWhere (e: e.starter == "ticked");
+      onIso = idsWhere (e: e.onIso);
+    };
+
+  # { "<id>" = { name, kind, status, statusReason }; }: cheap, package-free, evaluable for any
+  # revision of the catalog (update.check, state.nix id checks).
+  catalogIdsOf =
+    catalog:
+    lib.mapAttrs (_: e: {
+      inherit (e)
+        name
+        kind
+        status
+        statusReason
+        ;
+    }) catalog;
+
   mkIndex = catalog: {
     inherit indexVersion;
     apps = map indexEntry (lib.sort (a: b: a.id < b.id) (lib.attrValues catalog));
@@ -609,11 +796,14 @@ in
   inherit
     supportedFormats
     indexVersion
+    entryKinds
+    starters
     categories
     statuses
     features
+    boxMembers
     appKeys
-    nixosKeys
+    serviceKeys
     checkEntry
     validate
     formatProblems
@@ -622,5 +812,11 @@ in
     load
     mkIndex
     cacheableUnfreeOf
+    appsOnlyOf
+    servicesOf
+    featuresOfIn
+    servicesNeededBy
+    starterDefaultsOf
+    catalogIdsOf
     ;
 }

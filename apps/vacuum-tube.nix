@@ -1,7 +1,7 @@
 # VacuumTube: free, native Electron wrapper around YouTube's TV interface, from the binary cache.
 # Optional: not on the ISO and not in the installer; the YouTube kiosk entry is the default.
 {
-  format = 2;
+  format = 3;
   name = "VacuumTube";
   summary = "YouTube TV app; fallback if YouTube's TV page stops loading in Firefox.";
   description = ''

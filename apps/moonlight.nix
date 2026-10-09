@@ -1,6 +1,6 @@
 # Moonlight: free, native, from the binary cache.
 {
-  format = 2;
+  format = 3;
   name = "Moonlight";
   summary = "Stream games from your gaming PC to the TV.";
   description = ''
@@ -19,7 +19,6 @@
     # Project's own site (web app manifest of moonlight-stream.org, source: github.com/moonlight-stream/moonlight-stream.github.io, images/manifest/icons-512.png). 512x512 PNG. Checked 2026-10-06.
     iconUrl = "https://moonlight-stream.org/images/manifest/icons-512.png";
   };
-  installer = false; # Store only: the installer offers YouTube, Jellyfin, Firefox and Steam
   # Pairing keys and settings (QSettings, organisation and app name "Moonlight Game Streaming Project").
   dataPaths = [
     ".config/Moonlight Game Streaming Project"

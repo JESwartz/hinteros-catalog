@@ -1,7 +1,7 @@
 # Apple TV: free (a website), Firefox kiosk. On the ISO (no vendor software is installed, only a
 # Firefox profile); Store only, not in the installer. Playback limits checked 2026-10-07: Apple documents Apple TV in any web browser such as Chrome or Firefox, with no Linux block; resolution on Linux is limited by Widevine L3 (about 720p, not published by Apple).
 {
-  format = 2;
+  format = 3;
   name = "Apple TV";
   summary = "Apple TV originals, in a full-screen browser profile.";
   description = ''
@@ -21,7 +21,7 @@
     iconUrl = "https://tv.apple.com/assets/app-icons/pwa-manifest/tv-icon_192.png";
     firefoxProfile = true;
   };
-  onIso = false; # Store only: in format 2, onIso would also list it in the installer
+  onIso = true;
   # The kiosk profile (cookies, login, Widevine) lives in one directory per app.
   dataPaths = [ ".local/share/hinteros/firefox/apple-tv" ];
 

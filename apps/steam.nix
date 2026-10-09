@@ -2,7 +2,7 @@
 # `cache = true` CI builds it and the binary cache serves it, so installing is a download like
 # a free app. Never on the ISO.
 {
-  format = 2;
+  format = 3;
   name = "Steam";
   summary = "Play your Steam library on the TV.";
   description = ''
@@ -28,8 +28,11 @@
     # Valve's own store site (share_steam_logo.png, 512x512 PNG; the Steam brand page https://partner.steamgames.com/doc/marketing/branding links no stable icon file). Checked 2026-10-06.
     iconUrl = "https://store.steampowered.com/public/shared/images/responsive/share_steam_logo.png";
   };
-  requires = [ "graphics32" ];
-  installer = true;
+  box = [
+    "graphics32"
+    "steam-devices"
+  ];
+  starter = "offered";
   cache = true; # unfreeRedistributable (checked against nixpkgs by tests/packages.nix)
 
   # Refresh when Valve revises the agreement (see README, "Refreshing vendor terms").
@@ -49,10 +52,13 @@
     ".steam"
   ];
 
-  # No `app`: the session daemon has a built-in `steam` entry (Big Picture, games.list).
-  # programs.steam also enables 32-bit graphics and the controller udev rules.
-  nixos = _: { programs.steam.enable = true; };
-  packages = pkgs: [ pkgs.steam ];
+  # The tile is the daemon's built-in `steam` entry (Big Picture, games.list), so the app is
+  # not listed as a tile of its own. `box.steam` is pkgs.steam with this box's graphics packages;
+  # the `box` features above turn on 32-bit graphics and the controller udev rules box-wide.
+  app = { box, ... }: {
+    package = box.steam;
+    listed = false;
+  };
 
   notes = ''
     Valve occasionally replaces the bootstrap tarball; a nixpkgs bump fixes the hash. The Games

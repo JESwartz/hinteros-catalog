@@ -1,7 +1,7 @@
 # Hulu: free (a website), Firefox kiosk. On the ISO (no vendor software is installed, only a
 # Firefox profile); Store only, not in the installer. Playback limits checked 2026-10-07: Hulu does not support Linux officially, but Firefox on Linux with DRM plays at up to 720p according to reports. Not confirmed by a playback test.
 {
-  format = 2;
+  format = 3;
   name = "Hulu";
   summary = "Hulu shows and live TV, in a full-screen browser profile.";
   description = ''
@@ -21,7 +21,7 @@
     iconUrl = "https://www.hulu.com/static/icons/apple-touch-icon.png";
     firefoxProfile = true;
   };
-  onIso = false; # Store only: in format 2, onIso would also list it in the installer
+  onIso = true;
   # The kiosk profile (cookies, login, Widevine) lives in one directory per app.
   dataPaths = [ ".local/share/hinteros/firefox/hulu" ];
 

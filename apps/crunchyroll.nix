@@ -1,6 +1,6 @@
-# Crunchyroll: free (a website), Firefox kiosk. On the ISO, so an offline install can pick it.
+# Crunchyroll: free (a website), Firefox kiosk. Store only (not on the ISO, not in the installer).
 {
-  format = 2;
+  format = 3;
   name = "Crunchyroll";
   summary = "Anime streaming, in a full-screen browser profile.";
   description = ''
@@ -24,7 +24,6 @@
     # So the favicon Firefox stores in the kiosk profile (below) and the letter tile cover it.
     firefoxProfile = true;
   };
-  onIso = false; # Store only: in format 2, onIso would also list it in the installer
   # The kiosk profile (cookies, login, Widevine) lives in one directory per app.
   dataPaths = [ ".local/share/hinteros/firefox/crunchyroll" ];
 

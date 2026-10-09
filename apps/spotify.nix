@@ -1,7 +1,7 @@
 # Spotify: free (a website), Firefox kiosk. On the ISO (no vendor software is installed, only a
 # Firefox profile); Store only, not in the installer. Playback limits checked 2026-10-07: Spotify's web player supports Firefox on Linux; audio is Widevine-protected, so Firefox needs its DRM module (it downloads it itself).
 {
-  format = 2;
+  format = 3;
   name = "Spotify";
   summary = "Music and podcasts, in a full-screen browser profile.";
   description = ''
@@ -21,7 +21,7 @@
     iconUrl = "https://open.spotifycdn.com/cdn/images/icons/Spotify_256.png";
     firefoxProfile = true;
   };
-  onIso = false; # Store only: in format 2, onIso would also list it in the installer
+  onIso = true;
   # The kiosk profile (cookies, login, Widevine) lives in one directory per app.
   dataPaths = [ ".local/share/hinteros/firefox/spotify" ];
 

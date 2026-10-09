@@ -1,7 +1,7 @@
 # Netflix: free (a website), Firefox kiosk. On the ISO (no vendor software is installed, only a
 # Firefox profile); Store only, not in the installer. Playback limits checked 2026-10-07: Netflix's help centre lists Firefox 129+ on Linux with up to 1080p; it adds that Linux is not guaranteed to work.
 {
-  format = 2;
+  format = 3;
   name = "Netflix";
   summary = "Movies and series, in a full-screen browser profile.";
   description = ''
@@ -20,7 +20,7 @@
     # No iconUrl, checked 2026-10-07: its icons are 64 px (apple-touch-icon nficon2016.png), below the 192 px minimum; the site serves no larger one.
     firefoxProfile = true;
   };
-  onIso = false; # Store only: in format 2, onIso would also list it in the installer
+  onIso = true;
   # The kiosk profile (cookies, login, Widevine) lives in one directory per app.
   dataPaths = [ ".local/share/hinteros/firefox/netflix" ];
 

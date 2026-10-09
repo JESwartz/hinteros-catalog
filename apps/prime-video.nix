@@ -1,7 +1,7 @@
 # Prime Video: free (a website), Firefox kiosk. On the ISO (no vendor software is installed, only a
 # Firefox profile); Store only, not in the installer. Playback limits checked 2026-10-07: Amazon lists Firefox as supported but says other systems than Windows or macOS are limited to standard definition.
 {
-  format = 2;
+  format = 3;
   name = "Prime Video";
   summary = "Prime Video movies and series, in a full-screen browser profile.";
   description = ''
@@ -20,7 +20,7 @@
     # No iconUrl, checked 2026-10-07: its largest icon is a 152 px apple-touch-icon, below the 192 px minimum.
     firefoxProfile = true;
   };
-  onIso = false; # Store only: in format 2, onIso would also list it in the installer
+  onIso = true;
   # The kiosk profile (cookies, login, Widevine) lives in one directory per app.
   dataPaths = [ ".local/share/hinteros/firefox/prime-video" ];
 

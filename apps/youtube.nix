@@ -2,7 +2,7 @@
 # pre-selected in the installer. Same kiosk settings as the system repo's built-in `youtube` app
 # (nixos/modules/apps.nix, backend "firefox").
 {
-  format = 2;
+  format = 3;
   name = "YouTube";
   summary = "YouTube's TV interface, in a full-screen browser profile.";
   description = ''
@@ -24,7 +24,7 @@
     firefoxProfile = true;
   };
   onIso = true;
-  installerDefault = true;
+  starter = "ticked";
   dataPaths = [ ".local/share/hinteros/firefox/youtube" ];
 
   app = _: {
