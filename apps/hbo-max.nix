@@ -3,10 +3,10 @@
 {
   format = 3;
   name = "HBO Max";
-  summary = "HBO series and movies, in a full-screen browser profile.";
+  summary = "HBO series and movies.";
+  # The website runs in its own full-screen Firefox profile; the controller acts as a keyboard.
   description = ''
-    HBO Max's website in its own full-screen Firefox profile, driven by the controller like a
-    keyboard. 
+    HBO Max streams HBO series, Warner Bros. movies and other series and documentaries.
   '';
   category = "video";
   homepage = "https://www.hbomax.com";

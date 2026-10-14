@@ -1,13 +1,16 @@
 # Plex HTPC: unfree and not redistributable, native. Never cached, never in the ISO: nixpkgs'
-# derivation downloads the snap from Snapcraft on the box and repackages it there.
+# derivation downloads the snap from Snapcraft on the box and repackages it there. Offered in the
+# installer (not pre-selected); as it is not on the ISO, picking it needs a network connection.
 {
   format = 3;
   name = "Plex";
-  summary = "Watch your Plex libraries with Plex's TV interface.";
+  summary = "An app for your Plex media server.";
+  # Plex's 10-foot client for the big screen. Users sign in with a Plex account to watch their own
+  # or shared Plex servers. The app is downloaded from Plex and prepared on the box during
+  # install, which takes a few minutes.
   description = ''
-    Plex HTPC, Plex's 10-foot client for the big screen. Sign in with your Plex account to watch
-    your own or shared Plex servers. The app is downloaded from Plex and prepared on this box
-    during install, which takes a few minutes.
+    Plex HTPC is the Plex app for TV screens. It plays movies, series and music from your Plex
+    Media Server and from servers that others share with you.
   '';
   category = "video";
   homepage = "https://www.plex.tv";
@@ -25,6 +28,7 @@
   };
   # Never cached: Plex HTPC is not redistributable.
   cache = false;
+  starter = "offered";
 
   # Refresh when Plex revises its terms (see README, "Refreshing vendor terms").
   terms = {

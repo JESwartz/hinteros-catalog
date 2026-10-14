@@ -3,10 +3,13 @@
 {
   format = 3;
   name = "Prime Video";
-  summary = "Prime Video movies and series, in a full-screen browser profile.";
+  summary = "Movies, series and Amazon Originals.";
+  # The website runs in its own full-screen Firefox profile; the controller acts as a keyboard.
+  # Needs an Amazon Prime or Prime Video subscription; on Linux Amazon limits playback to standard
+  # definition (about 480p). Firefox downloads the video DRM module itself on first play. Prices
+  # and catalogue depend on the country.
   description = ''
-    Prime Video's website in its own full-screen Firefox profile, driven by the controller like a
-    keyboard. Needs an Amazon Prime or Prime Video subscription; on Linux Amazon limits playback to standard definition (about 480p). Firefox downloads the video DRM module itself on first play. Prices and catalogue depend on your country.
+    Prime Video streams movies, series and Amazon Originals. You can also rent or buy movies.
   '';
   category = "video";
   homepage = "https://www.primevideo.com";

@@ -3,10 +3,13 @@
 {
   format = 3;
   name = "Twitch";
-  summary = "Live streams and videos, in a full-screen browser profile.";
+  summary = "Live streams and videos.";
+  # The website runs in its own full-screen Firefox profile; the controller acts as a keyboard.
+  # Free; an account is needed to chat and follow channels. Text entry (chat, search) needs a
+  # keyboard or the on-screen keyboard.
   description = ''
-    Twitch's website in its own full-screen Firefox profile, driven by the controller like a
-    keyboard. Free; an account is needed to chat and follow channels. Text entry (chat, search) needs a keyboard or the on-screen keyboard.
+    Twitch shows live streams of games, music and talk. You can also watch past streams and
+    clips.
   '';
   category = "video";
   homepage = "https://www.twitch.tv";

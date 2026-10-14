@@ -1,13 +1,16 @@
 # VacuumTube: free, native Electron wrapper around YouTube's TV interface, from the binary cache.
-# Optional: not on the ISO and not in the installer; the YouTube kiosk entry is the default.
+# Not on the ISO, so picking it needs a network connection. Offered in the installer (not
+# pre-selected): the YouTube kiosk entry stays the default, and this is the fallback if YouTube's
+# TV page stops loading in Firefox.
 {
   format = 3;
   name = "VacuumTube";
-  summary = "YouTube TV app; fallback if YouTube's TV page stops loading in Firefox.";
+  summary = "An app for YouTube's TV interface.";
+  # Unofficial; handles game controllers itself. Users sign in with a Google account from the TV
+  # screen.
   description = ''
-    An unofficial desktop app that shows YouTube's TV interface and handles game controllers
-    itself. Install it if the YouTube app stops working in the browser. Sign in with your Google
-    account from the TV screen.
+    VacuumTube shows YouTube's TV interface in its own app. You can use a game controller to
+    watch videos and browse channels.
   '';
   category = "video";
   homepage = "https://github.com/shy1132/VacuumTube";
@@ -23,8 +26,8 @@
     desktopId = "VacuumTube";
     iconUrl = "https://raw.githubusercontent.com/shy1132/VacuumTube/main/assets/icon.png";
   };
-  # Not offered in the installer: the YouTube entry already covers the same service; users add this
-  # from the Store only if that one breaks.
+  # Offered, not ticked: the YouTube entry already covers the same service.
+  starter = "offered";
   # Settings, login and Chromium cache (Electron userData, "VacuumTube"; config folder per upstream README).
   dataPaths = [
     ".config/VacuumTube"

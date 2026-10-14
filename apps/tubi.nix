@@ -3,10 +3,11 @@
 {
   format = 3;
   name = "Tubi";
-  summary = "Free movies and TV with ads, in a full-screen browser profile.";
+  summary = "Free movies and series, with ads.";
+  # The website runs in its own full-screen Firefox profile; the controller acts as a keyboard.
   description = ''
-    Tubi's website in its own full-screen Firefox profile, driven by the controller like a
-    keyboard. 
+    Tubi streams thousands of movies and series for free, with ads. It also has live news
+    channels.
   '';
   category = "video";
   homepage = "https://tubitv.com";

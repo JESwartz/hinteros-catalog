@@ -3,10 +3,11 @@
 {
   format = 3;
   name = "Disney+";
-  summary = "Disney, Pixar, Marvel and Star Wars, in a full-screen browser profile.";
+  summary = "Disney, Pixar, Marvel and Star Wars.";
+  # The website runs in its own full-screen Firefox profile; the controller acts as a keyboard.
   description = ''
-    Disney+'s website in its own full-screen Firefox profile, driven by the controller like a
-    keyboard. 
+    Disney+ streams movies and series from Disney, Pixar, Marvel, Star Wars and National
+    Geographic.
   '';
   category = "video";
   homepage = "https://www.disneyplus.com";

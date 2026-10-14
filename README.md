@@ -64,7 +64,7 @@ M10); it is never in the Store. See [How to add an app](#adding-an-app-or-a-serv
 | `status` | no | `available` (default), `retired` (hidden from the Store, keeps working where installed), `removed` (tombstone, see below) |
 | `statusReason` | if not available | One line shown to users who have the app |
 | `depends`, `conflicts` | no | Other ids of the same kind. Installing adds dependencies; conflicting apps cannot be installed together |
-| `starter` | no (apps) | `null` (default: Store only), `"offered"` (listed in the installer's app step) or `"ticked"` (listed and pre-selected; needs `onIso`). The installer's picks are the starter set, copied into every new profile and guest session. Offered: YouTube, Jellyfin, Firefox, Steam; ticked: YouTube, Firefox |
+| `starter` | no (apps) | `null` (default: Store only), `"offered"` (listed in the installer's app step) or `"ticked"` (listed and pre-selected; needs `onIso`). The installer's picks are the starter set, copied into every new profile and guest session. Offered: YouTube, Jellyfin, Firefox, Steam, VacuumTube, Plex; ticked: YouTube, Firefox. Offered apps that are not `onIso` (Steam, VacuumTube, Plex) are downloaded, so picking one needs a network connection |
 | `needsServices` | no (apps) | Ids of `kind = "service"` entries the app needs (e.g. `[ "jellyfin-server" ]`); the validator refuses unknown ids, apps, removed entries, and the field on a service. Never installed with the app: while a needed service is not installed the Store shows red text (it needs that server, the admin profile can install it in Server) and disables Install, and the privileged service refuses the install. An app's `depends` stays app-to-app. In the index; `servicesNeededBy catalog ids` returns the union |
 | `onIso` | no (apps) | Ships on the ISO, so an offline install can pick it (YouTube, Jellyfin, Firefox). Free apps only; its `depends` must be `onIso` too |
 | `cache` | no | Default `false`. `true` only for an unfree entry whose unfree packages are all `unfreeRedistributable` in nixpkgs: CI builds it, the binary cache serves it and the install is a download like a free app. Checked against nixpkgs `meta.license` by `tests/packages.nix`. Free entries are always cached and must not set it. Names go into `lib.cacheableUnfree` |
@@ -176,7 +176,10 @@ with `box` features, not a service.
    - The icon resolves on a box: `desktopId` matches the installed `.desktop` file, `iconUrl` (if any) passes `nix run .#check-icon-urls` and `siteUrl`
      serves a usable icon (or `firefoxProfile` is set).
    - `sizeMiB` measured on a box (`nix path-info -S` of the closure minus what the box already has).
-   - Name, summary and description are user-facing English, no marketing.
+   - Name, summary and description are user-facing English (ASD-STE100 Simplified Technical
+     English), no marketing. They describe the app or service only: what it is and what it offers.
+     No advice on when to install it, no account or subscription notes, no install, DRM,
+     resolution or Linux-support notes and no implementation details: those go in comments.
 4. Merge, then bump `hinteros-catalog` in the system repo's `flake.lock` on `beta`. CI builds and
    caches every free entry and every `cache = true` entry; boxes on `beta` see the app after their next update.
 

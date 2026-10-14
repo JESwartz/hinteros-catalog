@@ -2,10 +2,10 @@
 {
   format = 3;
   name = "Moonlight";
-  summary = "Stream games from your gaming PC to the TV.";
+  summary = "Game streaming from your PC.";
   description = ''
-    Moonlight plays games streamed from a PC running Sunshine or NVIDIA GameStream on your
-    network, with your controller.
+    Moonlight plays games that stream from a PC on your network. The PC runs Sunshine or NVIDIA
+    GameStream.
   '';
   category = "games";
   homepage = "https://moonlight-stream.org";

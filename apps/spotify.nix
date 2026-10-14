@@ -3,10 +3,10 @@
 {
   format = 3;
   name = "Spotify";
-  summary = "Music and podcasts, in a full-screen browser profile.";
+  summary = "Music and podcasts.";
+  # The web player runs in its own full-screen Firefox profile; the controller acts as a keyboard.
   description = ''
-    Spotify's website in its own full-screen Firefox profile, driven by the controller like a
-    keyboard. 
+    Spotify streams music, podcasts and audiobooks. You can make playlists and follow artists.
   '';
   category = "music";
   homepage = "https://open.spotify.com";

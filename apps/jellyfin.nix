@@ -2,10 +2,12 @@
 {
   format = 3;
   name = "Jellyfin";
-  summary = "Watch your Jellyfin server's movies and shows.";
+  summary = "An app for your Jellyfin media server.";
+  # The Jellyfin desktop client in its TV mode. It connects to a Jellyfin server on the network,
+  # or to this box's own (`jellyfin-server`, from the Server section).
   description = ''
-    The Jellyfin desktop client in its TV mode. Connect to a Jellyfin server on your network
-    (or this box's own, from the Server section).
+    Jellyfin plays the movies, series and music on a Jellyfin media server. The server can be on
+    your home network or on this box.
   '';
   category = "video";
   homepage = "https://jellyfin.org";

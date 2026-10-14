@@ -4,11 +4,12 @@
 {
   format = 3;
   name = "Steam";
-  summary = "Play your Steam library on the TV.";
+  summary = "A game store and launcher.";
+  # Installed games appear in the Games section; Steam's Big Picture mode handles the store,
+  # downloads and settings. Each profile has its own Steam login and library.
   description = ''
-    Valve's game store and launcher. Your installed games appear in Games, and Steam's own
-    Big Picture mode handles the store, downloads and settings. Each profile has its own
-    Steam login and library.
+    Steam is Valve's store and launcher for PC games. Big Picture mode shows the store, your
+    games and settings on the TV.
   '';
   category = "games";
   homepage = "https://store.steampowered.com";

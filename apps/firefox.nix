@@ -3,10 +3,10 @@
 {
   format = 3;
   name = "Firefox";
-  summary = "Browse the web on the TV, with a controller or keyboard.";
+  summary = "A web browser.";
+  # Full screen, with its own profile. Keyboard and mouse work, or the controller as a pointer.
   description = ''
-    Firefox in full screen, with its own profile. Use a keyboard and mouse, or the controller
-    as a pointer, to browse the web.
+    Firefox is a free, open-source web browser from Mozilla. It has tabs, bookmarks and add-ons.
   '';
   category = "utilities";
   homepage = "https://www.mozilla.org/firefox/";

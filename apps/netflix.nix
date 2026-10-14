@@ -3,10 +3,11 @@
 {
   format = 3;
   name = "Netflix";
-  summary = "Movies and series, in a full-screen browser profile.";
+  summary = "Movies and series.";
+  # The website runs in its own full-screen Firefox profile; the controller acts as a keyboard.
+  # Needs a Netflix subscription; Firefox downloads the video DRM module itself on first play.
   description = ''
-    Netflix's website in its own full-screen Firefox profile, driven by the controller like a
-    keyboard. Needs a Netflix subscription; plays up to 1080p in Firefox on Linux (Netflix does not guarantee Linux). Firefox downloads the video DRM module itself on first play.
+    Netflix streams movies, series and documentaries. It also has its own Netflix shows and films.
   '';
   category = "video";
   homepage = "https://www.netflix.com";

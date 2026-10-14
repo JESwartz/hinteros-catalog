@@ -3,10 +3,11 @@
 {
   format = 3;
   name = "Pluto TV";
-  summary = "Free live channels and on-demand TV, in a full-screen browser profile.";
+  summary = "Free live channels and on-demand TV.";
+  # The website runs in its own full-screen Firefox profile; the controller acts as a keyboard.
   description = ''
-    Pluto TV's website in its own full-screen Firefox profile, driven by the controller like a
-    keyboard. 
+    Pluto TV streams hundreds of free live channels, with ads. It also has movies and series on
+    demand.
   '';
   category = "video";
   homepage = "https://pluto.tv";

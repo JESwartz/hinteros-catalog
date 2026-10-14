@@ -2,11 +2,12 @@
 {
   format = 3;
   name = "Crunchyroll";
-  summary = "Anime streaming, in a full-screen browser profile.";
+  summary = "Anime series and movies.";
+  # The website runs in its own full-screen Firefox profile; the controller acts as a keyboard.
+  # Needs a Crunchyroll account; Firefox downloads the video DRM module itself on first play.
   description = ''
-    Crunchyroll's website in its own full-screen Firefox profile, driven by the controller like
-    a keyboard. Needs a Crunchyroll account; Firefox downloads the video DRM module itself on
-    first play.
+    Crunchyroll streams anime series and movies from Japan. Many new episodes come out soon
+    after they show in Japan.
   '';
   category = "video";
   homepage = "https://www.crunchyroll.com";

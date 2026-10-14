@@ -3,10 +3,10 @@
 {
   format = 3;
   name = "Apple TV";
-  summary = "Apple TV originals, in a full-screen browser profile.";
+  summary = "Apple Original series and movies.";
+  # The website runs in its own full-screen Firefox profile; the controller acts as a keyboard.
   description = ''
-    Apple TV's website in its own full-screen Firefox profile, driven by the controller like a
-    keyboard. 
+    Apple TV streams series, movies and documentaries that Apple makes.
   '';
   category = "video";
   homepage = "https://tv.apple.com";

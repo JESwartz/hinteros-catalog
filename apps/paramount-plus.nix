@@ -3,10 +3,11 @@
 {
   format = 3;
   name = "Paramount+";
-  summary = "Paramount+ shows and live TV, in a full-screen browser profile.";
+  summary = "Series, movies and live TV.";
+  # The website runs in its own full-screen Firefox profile; the controller acts as a keyboard.
   description = ''
-    Paramount+'s website in its own full-screen Firefox profile, driven by the controller like a
-    keyboard. 
+    Paramount+ streams series and movies from CBS, Paramount, Nickelodeon and other studios. In
+    some countries, it also has live sports and news.
   '';
   category = "video";
   homepage = "https://www.paramountplus.com";

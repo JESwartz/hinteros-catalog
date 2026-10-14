@@ -4,11 +4,13 @@
   format = 3;
   kind = "service";
   name = "Jellyfin server";
-  summary = "Share this box's movies and shows with every screen at home.";
+  summary = "A media server for your movies, series and music.";
+  # Runs on this box for everyone at home: the owner points it at movie and show folders and
+  # watches from any Jellyfin app on the network, including the `jellyfin` app on this box. Only
+  # the admin profile can turn it on or off.
   description = ''
-    The Jellyfin media server, running on this box for everyone at home. Point it at your
-    movie and show folders and watch from any Jellyfin app on your network, including the
-    Jellyfin app on this box. Only the admin profile can turn it on or off.
+    Jellyfin Server keeps your movies, series and music in one library. Jellyfin apps on your
+    home network play from this library.
   '';
   category = "video";
   homepage = "https://jellyfin.org";

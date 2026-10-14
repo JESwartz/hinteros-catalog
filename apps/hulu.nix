@@ -3,10 +3,11 @@
 {
   format = 3;
   name = "Hulu";
-  summary = "Hulu shows and live TV, in a full-screen browser profile.";
+  summary = "TV series, movies and live TV.";
+  # The website runs in its own full-screen Firefox profile; the controller acts as a keyboard.
   description = ''
-    Hulu's website in its own full-screen Firefox profile, driven by the controller like a
-    keyboard. 
+    Hulu streams TV series, movies and its own Hulu Originals. Hulu + Live TV adds live TV
+    channels.
   '';
   category = "video";
   homepage = "https://www.hulu.com";

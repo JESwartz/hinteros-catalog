@@ -4,10 +4,12 @@
 {
   format = 3;
   name = "YouTube";
-  summary = "YouTube's TV interface, in a full-screen browser profile.";
+  summary = "Videos, music and live streams.";
+  # YouTube's TV interface in its own full-screen Firefox profile; the controller acts as a
+  # keyboard. Users sign in with a Google account from the TV screen.
   description = ''
-    YouTube's TV interface in its own full-screen Firefox profile, driven by the controller like
-    a keyboard. Sign in with your Google account from the TV screen.
+    YouTube has videos, music and live streams from creators all over the world. This app shows
+    YouTube's TV interface.
   '';
   category = "video";
   homepage = "https://www.youtube.com";
