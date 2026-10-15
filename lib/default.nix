@@ -456,9 +456,13 @@ let
             ]
           ) "app.input: gamepad or keyboard"
           ++ lib.optional (appAttrs ? listed && !isBool appAttrs.listed) "app.listed: a bool"
-          ++ lib.optional (
-            (appAttrs.input or null) == "gamepad" && full.sandbox && !(full.permissions ? gamepad)
-          ) "permissions.gamepad: required for input = \"gamepad\" (the sandbox hides /dev/input)";
+          ++
+            lib.optional
+              (
+                # No input: the daemon's default, gamepad.
+                (appAttrs.input or "gamepad") == "gamepad" && full.sandbox && !(full.permissions ? gamepad)
+              )
+              "permissions.gamepad: required for input = \"gamepad\" or no input (the sandbox hides /dev/input)";
 
       serviceBadArgs = badArgs serviceArgs full.service;
       serviceAttrs = callStub full.service;

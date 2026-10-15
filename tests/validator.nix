@@ -17,7 +17,11 @@ let
     };
     sizeMiB = 10;
     icon.desktopId = "org.example.Example";
-    app = { pkgs, ... }: { package = pkgs.hello; };
+    # Keyboard input: no gamepad permission needed (the default input is gamepad).
+    app = { pkgs, ... }: {
+      package = pkgs.hello;
+      input = "keyboard";
+    };
   };
 
   terms = {
@@ -292,7 +296,10 @@ let
         good
         // {
           icon = { };
-          app = _: { kiosk.url = "https://example.org"; };
+          app = _: {
+            kiosk.url = "https://example.org";
+            input = "keyboard";
+          };
           dataPaths = [ ".local/share/hinteros/firefox/example" ];
         }
       );
@@ -366,6 +373,7 @@ let
           ];
           app = { box, ... }: {
             package = box.steam;
+            input = "keyboard";
             listed = false;
           };
         }
@@ -875,6 +883,12 @@ let
             input = "gamepad";
           };
         }
+      );
+      expected = true;
+    };
+    testNoInputNeedsPermission = {
+      expr = refuses "permissions.gamepad: required for input" (
+        good // { app = { pkgs, ... }: { package = pkgs.hello; }; }
       );
       expected = true;
     };
