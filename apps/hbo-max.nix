@@ -19,6 +19,7 @@
   icon = {
     # Vendor's own icon, found in its site/manifest, checked 2026-10-07: apple-touch-icon in the head of https://www.hbomax.com (www.max.com redirects there), 180x180 PNG.
     iconUrl = "https://www.hbomax.com/dotcom/img/hbomax/apple-touch-icon.png";
+    sha256 = "def031c4890e1ba75c3f29404e01112304a1e224658cdc06dc30ffed3d0ba498";
     firefoxProfile = true;
   };
   onIso = true;

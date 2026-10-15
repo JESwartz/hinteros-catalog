@@ -28,6 +28,7 @@
     siteUrl = "https://store.steampowered.com";
     # Valve's own store site (share_steam_logo.png, 512x512 PNG; the Steam brand page https://partner.steamgames.com/doc/marketing/branding links no stable icon file). Checked 2026-10-06.
     iconUrl = "https://store.steampowered.com/public/shared/images/responsive/share_steam_logo.png";
+    sha256 = "57df95cc7a45db8c9e62306aaa1be8983a62c5b2260cee830a1329fe803172f1";
   };
   box = [
     "graphics32"

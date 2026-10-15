@@ -186,7 +186,7 @@ let
     icon = {
       required = true;
       check = isAttrs;
-      what = "an attrset { desktopId?; siteUrl?; iconUrl?; firefoxProfile?; }";
+      what = "an attrset { desktopId?; siteUrl?; iconUrl?; sha256?; firefoxProfile?; }";
     };
     status = {
       default = "available";
@@ -404,6 +404,7 @@ let
             "desktopId"
             "siteUrl"
             "iconUrl"
+            "sha256"
             "firefoxProfile"
           ] (attrNames ic);
         in
@@ -415,6 +416,13 @@ let
         ++ lib.optional (
           ic ? iconUrl && !(isHttps ic.iconUrl && stringLength ic.iconUrl <= 500)
         ) "icon.iconUrl: an https URL of the vendor's own public logo (at most 500 characters)"
+        ++ lib.optional (
+          ic ? iconUrl && !(ic ? sha256)
+        ) "icon.sha256: required with iconUrl (the file's SHA-256, 64 lowercase hex digits)"
+        ++ lib.optional (
+          ic ? sha256 && !(isString ic.sha256 && builtins.match "[0-9a-f]{64}" ic.sha256 != null)
+        ) "icon.sha256: 64 lowercase hex digits (the SHA-256 of the iconUrl file)"
+        ++ lib.optional (ic ? sha256 && !(ic ? iconUrl)) "icon.sha256: only with iconUrl"
         ++ lib.optional (ic ? firefoxProfile && !isBool ic.firefoxProfile) "icon.firefoxProfile: a bool"
         ++ lib.optional (
           (ic.firefoxProfile or false) && full.type != "web"

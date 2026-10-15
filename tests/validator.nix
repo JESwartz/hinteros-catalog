@@ -1018,10 +1018,59 @@ let
           icon = {
             desktopId = "org.example.Example";
             iconUrl = "https://example.org/logo.png";
+            sha256 = "abababababababababababababababababababababababababababababababab";
           };
         }
       );
       expected = [ ];
+    };
+    testIconUrlNeedsSha256 = {
+      expr = refuses "icon.sha256: required with iconUrl" (
+        good
+        // {
+          icon = {
+            desktopId = "x";
+            iconUrl = "https://example.org/logo.png";
+          };
+        }
+      );
+      expected = true;
+    };
+    testBadSha256 = {
+      expr =
+        map
+          (
+            h:
+            refuses "icon.sha256: 64 lowercase hex digits" (
+              good
+              // {
+                icon = {
+                  desktopId = "x";
+                  iconUrl = "https://example.org/logo.png";
+                  sha256 = h;
+                };
+              }
+            )
+          )
+          [
+            "abc"
+            (lib.toUpper "abababababababababababababababababababababababababababababababab")
+            "sha256-AAAA"
+            5
+          ];
+      expected = lib.genList (_: true) 4;
+    };
+    testSha256NeedsIconUrl = {
+      expr = refuses "icon.sha256: only with iconUrl" (
+        good
+        // {
+          icon = {
+            desktopId = "x";
+            sha256 = "abababababababababababababababababababababababababababababababab";
+          };
+        }
+      );
+      expected = true;
     };
     testIconUrlRejectsOtherSchemes = {
       expr =
@@ -1071,12 +1120,18 @@ let
                 icon = {
                   desktopId = "x";
                   iconUrl = "https://example.org/l.png";
+                  sha256 = "abababababababababababababababababababababababababababababababab";
                 };
               }
             );
           }).apps
-        ).icon.iconUrl;
-      expected = "https://example.org/l.png";
+        ).icon;
+      expected = {
+        desktopId = "x";
+        iconUrl = "https://example.org/l.png";
+        sha256 = "abababababababababababababababababababababababababababababababab";
+        siteUrl = "https://example.org";
+      };
     };
     testSiteUrlDefaultsToHomepage = {
       expr = (catalogLib.normalize "x" good).icon;

@@ -20,6 +20,7 @@
   icon = {
     # Vendor's own icon, found in its site/manifest, checked 2026-10-07: apple-touch-icon in the head of https://www.hulu.com, 180x180 PNG.
     iconUrl = "https://www.hulu.com/static/icons/apple-touch-icon.png";
+    sha256 = "20c038b7c6993fe80ea06e8e0e6c84aefd87bbbe340fc6114fc9dce4b810da12";
     firefoxProfile = true;
   };
   onIso = true;

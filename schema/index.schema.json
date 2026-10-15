@@ -60,11 +60,13 @@
         "icon": {
           "type": "object",
           "additionalProperties": false,
+          "dependentRequired": { "iconUrl": ["sha256"], "sha256": ["iconUrl"] },
           "description": "Where the session daemon finds the real icon at runtime; HinterOS ships no logos. siteUrl defaults to homepage.",
           "properties": {
             "desktopId": { "type": "string", "pattern": "^[A-Za-z0-9._-]+$" },
             "siteUrl": { "$ref": "#/$defs/Https" },
             "iconUrl": { "$ref": "#/$defs/Https", "description": "The vendor's own public logo; the daemon downloads and caches it at runtime (https, at most 1 MiB). Optional." },
+            "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$", "description": "SHA-256 of the iconUrl file (hex). Always there with iconUrl; older indexes have none. The daemon refuses a download with another hash." },
             "firefoxProfile": { "type": "boolean" }
           }
         },

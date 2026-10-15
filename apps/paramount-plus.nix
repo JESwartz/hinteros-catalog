@@ -20,6 +20,7 @@
   icon = {
     # Vendor's own icon, found in its site/manifest, checked 2026-10-07: icon in its web app manifest (https://www.paramountplus.com/manifest.json), 192x192 PNG.
     iconUrl = "https://www.paramountplus.com/assets/images/paramount-plus-app-store-logo-192.png";
+    sha256 = "119cdc112cfaaefd5e2dcb934d5980e55d8ed1d7f615e2e850b322ccb985e619";
     firefoxProfile = true;
   };
   onIso = true;
