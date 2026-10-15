@@ -58,6 +58,7 @@ let
     "gamepad" # /dev/input (device ACLs limit it to controllers) and /run/udev
     "mic" # a pulse socket that may record
     "downloads" # the profile's ~/Downloads, read-write
+    "lan" # the local network (home devices, this box's own services); without it only DNS and the internet
   ];
   permissionLevels = [
     "required" # always granted

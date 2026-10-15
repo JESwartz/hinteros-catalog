@@ -23,8 +23,13 @@
   };
   onIso = true;
   starter = "offered";
-  # No input set: the daemon passes the controller through (gamepad).
-  permissions.gamepad = "required";
+  permissions = {
+    # No input set: the daemon passes the controller through (gamepad).
+    gamepad = "required";
+    # A Jellyfin server on the home network or on this box (`jellyfin-server`); a server on the
+    # internet works without it.
+    lan = "optional";
+  };
   # Qt app: settings, saved servers and logins, web cache. Names differ between jellyfin-desktop
   # and its predecessor jellyfin-media-player: listing a path that does not exist is harmless.
   dataPaths = [

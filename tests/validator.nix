@@ -856,6 +856,7 @@ let
             gamepad = "required";
             mic = "optional";
             downloads = "optional";
+            lan = "optional";
           };
         }
       );
