@@ -53,8 +53,12 @@
     ".cache/Plex HTPC"
   ];
 
-  # The sandbox hides /dev/input; the app reads the controller itself.
-  permissions.gamepad = "required";
+  permissions = {
+    # The sandbox hides /dev/input; the app reads the controller itself.
+    gamepad = "required";
+    # A Plex Media Server on the home network or on this box (Plex also works over the internet).
+    lan = "optional";
+  };
 
   app =
     { pkgs, ... }:

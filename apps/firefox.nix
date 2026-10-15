@@ -27,8 +27,12 @@
   # Bookmarks, history, logins and add-ons of the kiosk profile.
   dataPaths = [ ".local/share/hinteros/firefox/firefox" ];
 
-  # Save files to the profile's Downloads folder.
-  permissions.downloads = "optional";
+  permissions = {
+    # Save files to the profile's Downloads folder.
+    downloads = "optional";
+    # Pages on the home network (a router, a NAS) and on this box.
+    lan = "optional";
+  };
 
   app = _: {
     kiosk = {
