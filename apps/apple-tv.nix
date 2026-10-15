@@ -19,6 +19,7 @@
   icon = {
     # Vendor's own icon, found in its site/manifest, checked 2026-10-07: its own web app manifest (https://tv.apple.com/manifest.json), 192x192 PNG on tv.apple.com.
     iconUrl = "https://tv.apple.com/assets/app-icons/pwa-manifest/tv-icon_192.png";
+    sha256 = "295a2ca32f519919dd6e3a90d60fbf4e47420769b9255f5c478753bcf7b6f49e";
     firefoxProfile = true;
   };
   onIso = true;

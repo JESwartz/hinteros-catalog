@@ -25,6 +25,7 @@
     siteUrl = "https://www.plex.tv";
     # Plex's own site: web app manifest of watch.plex.tv (where www.plex.tv redirects), icon-512x512.png, 512x512 PNG. plex.tv has no public press-kit page. Checked 2026-10-06.
     iconUrl = "https://watch.plex.tv/icons/icon-512x512.png";
+    sha256 = "78072fd57aacff1f73dee6432fb8d7f0360f300b4545422fb767cce638c4e7d3";
   };
   # Never cached: Plex HTPC is not redistributable.
   cache = false;

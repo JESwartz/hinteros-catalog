@@ -29,6 +29,7 @@
     # 256x256 PNG, GPL-3.0). Checked 2026-10-15.
     desktopId = "openra-ra";
     iconUrl = "https://raw.githubusercontent.com/OpenRA/OpenRA/release-20250330/packaging/artwork/ra_256x256.png";
+    sha256 = "a22d3a38387d30d215b0f4625c3ffaed6091f513f0548bd23a353e72f7d009cf";
   };
   # Settings, downloaded game content, maps, replays and saves ($XDG_CONFIG_HOME/openra; the
   # engine still uses ~/.openra if that exists).

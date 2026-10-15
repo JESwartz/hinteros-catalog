@@ -20,6 +20,7 @@
   icon = {
     # Vendor's own icon, found in its site/manifest, checked 2026-10-07: its own web app manifest (https://www.disneyplus.com/manifest.json), 192x192 PNG on Disney's bamgrid.com asset host.
     iconUrl = "https://static-assets.bamgrid.com/product/disneyplus/favicons/msftpwa-192x192-aurora.97f08a1eb58995c81687d0cf3f953796.png";
+    sha256 = "6736dd4ac1c85888cb15b98b1c6320fd0485cf10879555c74a7eab44a094fcd8";
     firefoxProfile = true;
   };
   onIso = true;

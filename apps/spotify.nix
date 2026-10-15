@@ -19,6 +19,7 @@
   icon = {
     # Vendor's own icon, found in its site/manifest, checked 2026-10-07: icon in its web player manifest (open.spotifycdn.com/cdn/generated/manifest-web-player.*.json), 256x256 PNG on Spotify's own spotifycdn.com.
     iconUrl = "https://open.spotifycdn.com/cdn/images/icons/Spotify_256.png";
+    sha256 = "17e41e58ac71f2688f1653ef40e6d97973db98f33714316387e1d04c72f899a6";
     firefoxProfile = true;
   };
   onIso = true;
