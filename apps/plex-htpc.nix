@@ -39,8 +39,11 @@
     text = ./terms/plex-htpc-2025-10-30.txt;
   };
 
-  # Settings, login, watch state, caches and the Widevine module the app downloads.
+  # Settings, login, watch state, caches and the Widevine module the app downloads. Plex HTPC
+  # 1.71 writes .local/share/plex, .cache/plex and .cache/Plex HTPC (seen in the sandbox-apps VM
+  # test, 2026-10-15).
   dataPaths = [
+    ".local/share/plex"
     ".local/share/plex-htpc"
     ".local/share/Plex HTPC"
     ".config/plex-htpc"
