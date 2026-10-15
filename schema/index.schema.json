@@ -119,7 +119,17 @@
         },
         "free": { "type": "boolean" },
         "redistributable": { "type": "boolean" },
-        "cache": { "type": "boolean", "description": "Unfree and cached (Steam): a download like a free entry" }
+        "cache": { "type": "boolean", "description": "Unfree and cached (Steam): a download like a free entry" },
+        "permissions": {
+          "type": "object",
+          "description": "Sandbox permissions the app declares. required: always granted; optional: the profile user can switch it off. Unknown names: ignore. Missing: none",
+          "propertyNames": { "pattern": "^[a-z][a-z0-9-]{0,31}$" },
+          "additionalProperties": { "enum": ["required", "optional"] }
+        },
+        "sandbox": {
+          "type": "boolean",
+          "description": "The session daemon starts the app in its sandbox (all apps except Steam). Always false for services. Missing: true for apps"
+        }
       }
     },
     "RemovedApp": {

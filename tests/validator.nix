@@ -840,6 +840,125 @@ let
         false
       ];
     };
+    testPermissionsPass = {
+      expr = problems "example" (
+        good
+        // {
+          permissions = {
+            gamepad = "required";
+            mic = "optional";
+            downloads = "optional";
+          };
+        }
+      );
+      expected = [ ];
+    };
+    testPermissionsRefused = {
+      expr = map (v: refuses "permissions: must be" (good // { permissions = v; })) [
+        { camera = "optional"; }
+        { mic = "maybe"; }
+        { mic = true; }
+        [ "mic" ]
+      ];
+      expected = lib.genList (_: true) 4;
+    };
+    testSandboxMustBeBool = {
+      expr = refuses "sandbox: must be a bool" (good // { sandbox = "no"; });
+      expected = true;
+    };
+    testGamepadInputNeedsPermission = {
+      expr = refuses "permissions.gamepad: required for input" (
+        good
+        // {
+          app = { pkgs, ... }: {
+            package = pkgs.hello;
+            input = "gamepad";
+          };
+        }
+      );
+      expected = true;
+    };
+    testGamepadInputUnsandboxedPasses = {
+      expr = problems "example" (
+        good
+        // {
+          sandbox = false;
+          app = { pkgs, ... }: {
+            package = pkgs.hello;
+            input = "gamepad";
+          };
+        }
+      );
+      expected = [ ];
+    };
+    testUnsandboxedHasNoPermissions = {
+      expr = refuses "permissions: only for sandboxed apps" (
+        good
+        // {
+          sandbox = false;
+          permissions.mic = "optional";
+        }
+      );
+      expected = true;
+    };
+    testServiceHasNoSandboxFields = {
+      expr = [
+        (refuses "permissions: only for apps" (goodService // { permissions.mic = "optional"; }))
+        (refuses "sandbox: only for apps" (goodService // { sandbox = false; }))
+      ];
+      expected = [
+        true
+        true
+      ];
+    };
+    testSandboxDataPath = {
+      expr = {
+        sandboxed = (catalogLib.normalize "x" (good // { dataPaths = [ ".config/x" ]; })).dataPaths;
+        listedTwice =
+          (catalogLib.normalize "x" (good // { dataPaths = [ ".local/share/hinteros/sandbox/x" ]; }))
+          .dataPaths;
+        unsandboxed = (catalogLib.normalize "x" (good // { sandbox = false; })).dataPaths;
+        service = (catalogLib.normalize "s" goodService).dataPaths;
+      };
+      expected = {
+        sandboxed = [
+          ".config/x"
+          ".local/share/hinteros/sandbox/x"
+        ];
+        listedTwice = [ ".local/share/hinteros/sandbox/x" ];
+        unsandboxed = [ ];
+        service = [ ];
+      };
+    };
+    testIndexCarriesPermissions = {
+      expr =
+        map
+          (e: {
+            inherit (e) id permissions sandbox;
+          })
+          (catalogLib.mkIndex {
+            a = catalogLib.normalize "a" (good // { permissions.gamepad = "required"; });
+            b = catalogLib.normalize "b" (good // { sandbox = false; });
+            s = catalogLib.normalize "s" goodService;
+          }).apps;
+      expected = [
+        {
+          id = "a";
+          permissions.gamepad = "required";
+          sandbox = true;
+        }
+        {
+          id = "b";
+          permissions = { };
+          sandbox = false;
+        }
+        {
+          id = "s";
+          permissions = { };
+          sandbox = false;
+        }
+      ];
+    };
     testRetiredNeedsReason = {
       expr = refuses "statusReason: required" (good // { status = "retired"; });
       expected = true;

@@ -53,6 +53,9 @@
     ".steam"
   ];
 
+  # Not sandboxed: Steam runs its own bwrap (pressure-vessel) and needs the full home and devices.
+  sandbox = false;
+
   # The tile is the daemon's built-in `steam` entry (Big Picture, games.list), so the app is
   # not listed as a tile of its own. `box.steam` is pkgs.steam with this box's graphics packages;
   # the `box` features above turn on 32-bit graphics and the controller udev rules box-wide.

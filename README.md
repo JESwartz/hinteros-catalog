@@ -70,12 +70,16 @@ M10); it is never in the Store. See [How to add an app](#adding-an-app-or-a-serv
 | `cache` | no | Default `false`. `true` only for an unfree entry whose unfree packages are all `unfreeRedistributable` in nixpkgs: CI builds it, the binary cache serves it and the install is a download like a free app. Checked against nixpkgs `meta.license` by `tests/packages.nix`. Free entries are always cached and must not set it. Names go into `lib.cacheableUnfree` |
 | `terms` | unfree entries | The vendor's full terms, shown in full in the install dialog before the user accepts: `{ title; version; url; retrieved; text; }`. `version` is the vendor's version or revision date (the box records which version each profile accepted), `retrieved` the date the text was copied (`YYYY-MM-DD`), `text` a plain UTF-8 file `./terms/<id>-<version>.txt`. The index carries title, version, url, retrieved and the file name `terms/<id>-<version>.txt`; the index package installs the files next to `catalog.json` |
 | `dataPaths` | no | Paths relative to a profile's home that hold the app's data. "Remove and delete data" deletes them in the removing profile's home only, after a second confirmation. No leading `/` or `~`, no `.`, `..` or empty components, no wildcards. A kiosk (web) app must list its Firefox profile, `.local/share/hinteros/firefox/<id>`. Deleting Steam's `.local/share/Steam` also removes installed games. Services keep their data in `/var/lib` and list none |
+| `permissions` | no (apps) | What the app may use in its sandbox, `{ <name> = "required" \| "optional"; }`, default `{ }`. Names: `gamepad` (`/dev/input`, device ACLs limit it to controllers, and `/run/udev`; needed by every `input = "gamepad"` app), `mic` (a pulse socket that may record), `downloads` (the profile's `~/Downloads`, read-write). The install sheet shows them all switched on; the user can switch optional ones off (then and on the app's page). The validator refuses other names and values. In the index |
+| `sandbox` | no (apps) | Default `true`: the session daemon starts the app in its bwrap sandbox, with its own home `.local/share/hinteros/sandbox/<id>` (added to `dataPaths` automatically). `false` only for Steam, which runs its own sandbox; such an app has no `permissions`. In the index |
 | `notes` | no | Maintainer notes (upstream quirks, review findings); not in the index |
 
 Derived fields in `catalog` and the index: `id`, `type` (`web` if `app.kiosk` is set, else
 `native`; `service` for services; `apps.list`'s web/native `kind` is this `type`) and
 `buildsOnDevice` (true for unfree entries without `cache`: only `cache = true` unfree entries are
-in the vendor cache, and nothing unfree is ever on the ISO).
+in the vendor cache, and nothing unfree is ever on the ISO). For a sandboxed app, `dataPaths`
+also has its sandbox home, `.local/share/hinteros/sandbox/<id>`, and `sandbox` is always `false`
+for services.
 
 ### Library outputs for the system repo
 
@@ -173,6 +177,9 @@ with `box` features, not a service.
      and `retrieved` are right, and the file is named `<id>-<version>.txt`.
    - `dataPaths` lists every directory the app writes under a profile's home (check on a box:
      `~/.config`, `~/.local/share`, `~/.cache`, dotfiles), and nothing shared with other apps.
+     A sandboxed app writes only inside its sandbox home, which is listed automatically.
+   - `permissions` lists what the app needs in its sandbox and nothing more: `gamepad = "required"`
+     for `input = "gamepad"`, optional for anything the app works without.
    - The icon resolves on a box: `desktopId` matches the installed `.desktop` file, `iconUrl` (if any) passes `nix run .#check-icon-urls` and `siteUrl`
      serves a usable icon (or `firefoxProfile` is set).
    - `sizeMiB` measured on a box (`nix path-info -S` of the closure minus what the box already has).

@@ -26,6 +26,9 @@
     ".local/share/Moonlight Game Streaming Project"
   ];
 
+  # The sandbox hides /dev/input; the app reads the controller itself.
+  permissions.gamepad = "required";
+
   app =
     { pkgs, ... }:
     {

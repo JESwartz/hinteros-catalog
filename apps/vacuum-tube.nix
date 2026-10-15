@@ -34,6 +34,9 @@
     ".cache/VacuumTube"
   ];
 
+  # The sandbox hides /dev/input; the app reads the controller itself.
+  permissions.gamepad = "required";
+
   app =
     { pkgs, ... }:
     {
