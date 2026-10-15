@@ -37,6 +37,11 @@
     ".openra"
   ];
 
+  permissions = {
+    # LAN games: finding and joining games on the home network (online games work without it).
+    lan = "optional";
+  };
+
   app =
     { pkgs, ... }:
     {
