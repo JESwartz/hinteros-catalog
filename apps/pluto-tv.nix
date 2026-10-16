@@ -20,6 +20,7 @@
   icon = {
     # Vendor's own icon, found in its site/manifest, checked 2026-10-07: apple-touch-icon in the head of https://pluto.tv (also in its manifest, https://pluto.tv/api/manifest/), 256x256 PNG.
     iconUrl = "https://pluto.tv/favicon/large.png";
+    sha256 = "1e977afcc9b43c1c7d673ce80be543e48a18081c0520a4b9a2a5a901b5ff4c5b";
     firefoxProfile = true;
   };
   onIso = true;

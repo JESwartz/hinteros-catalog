@@ -21,11 +21,19 @@
     siteUrl = "https://www.mozilla.org";
     # Mozilla's official Firefox source repo, https://github.com/mozilla-firefox/firefox (browser/branding/official/content/about-logo@2x.png, 384x384 PNG). Checked 2026-10-06.
     iconUrl = "https://raw.githubusercontent.com/mozilla-firefox/firefox/main/browser/branding/official/content/about-logo@2x.png";
+    sha256 = "310bc31d4b036d47c84fc020005b08e7b1a2a5582bd9ff54781b647cc0ff3ba3";
   };
   onIso = true;
   starter = "ticked";
   # Bookmarks, history, logins and add-ons of the kiosk profile.
   dataPaths = [ ".local/share/hinteros/firefox/firefox" ];
+
+  permissions = {
+    # Save files to the profile's Downloads folder.
+    downloads = "optional";
+    # Pages on the home network (a router, a NAS) and on this box.
+    lan = "optional";
+  };
 
   app = _: {
     kiosk = {

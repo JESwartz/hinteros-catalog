@@ -22,6 +22,7 @@
   icon = {
     # YouTube's own web app manifest (https://www.youtube.com/manifest.webmanifest), 192x192 PNG on Google's gstatic.com. Checked 2026-10-06.
     iconUrl = "https://www.gstatic.com/youtube/img/branding/favicon/favicon_192x192_v2.png";
+    sha256 = "360c7d41cb4feabc5299c79e07d0e51f7f910f93811220a5d82a277792b3e935";
     # Use the favicon Firefox stored in the kiosk profile.
     firefoxProfile = true;
   };

@@ -28,6 +28,7 @@
     siteUrl = "https://store.steampowered.com";
     # Valve's own store site (share_steam_logo.png, 512x512 PNG; the Steam brand page https://partner.steamgames.com/doc/marketing/branding links no stable icon file). Checked 2026-10-06.
     iconUrl = "https://store.steampowered.com/public/shared/images/responsive/share_steam_logo.png";
+    sha256 = "57df95cc7a45db8c9e62306aaa1be8983a62c5b2260cee830a1329fe803172f1";
   };
   box = [
     "graphics32"
@@ -52,6 +53,9 @@
     ".local/share/Steam"
     ".steam"
   ];
+
+  # Not sandboxed: Steam runs its own bwrap (pressure-vessel) and needs the full home and devices.
+  sandbox = false;
 
   # The tile is the daemon's built-in `steam` entry (Big Picture, games.list), so the app is
   # not listed as a tile of its own. `box.steam` is pkgs.steam with this box's graphics packages;

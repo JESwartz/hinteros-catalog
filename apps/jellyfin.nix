@@ -20,9 +20,17 @@
     desktopId = "org.jellyfin.JellyfinDesktop";
     # Jellyfin's official branding repo, https://github.com/jellyfin/jellyfin-ux (branding/SVG/icon-transparent.svg). Square SVG. Checked 2026-10-06.
     iconUrl = "https://raw.githubusercontent.com/jellyfin/jellyfin-ux/master/branding/SVG/icon-transparent.svg";
+    sha256 = "817c25b47442b192250448fe48cd5f265fe9183bc75aa12030bbe335495255d1";
   };
   onIso = true;
   starter = "offered";
+  permissions = {
+    # No input set: the daemon passes the controller through (gamepad).
+    gamepad = "required";
+    # A Jellyfin server on the home network or on this box (`jellyfin-server`); a server on the
+    # internet works without it.
+    lan = "optional";
+  };
   # Qt app: settings, saved servers and logins, web cache. Names differ between jellyfin-desktop
   # and its predecessor jellyfin-media-player: listing a path that does not exist is harmless.
   dataPaths = [

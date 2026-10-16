@@ -25,6 +25,7 @@
     siteUrl = "https://www.plex.tv";
     # Plex's own site: web app manifest of watch.plex.tv (where www.plex.tv redirects), icon-512x512.png, 512x512 PNG. plex.tv has no public press-kit page. Checked 2026-10-06.
     iconUrl = "https://watch.plex.tv/icons/icon-512x512.png";
+    sha256 = "78072fd57aacff1f73dee6432fb8d7f0360f300b4545422fb767cce638c4e7d3";
   };
   # Never cached: Plex HTPC is not redistributable.
   cache = false;
@@ -39,8 +40,11 @@
     text = ./terms/plex-htpc-2025-10-30.txt;
   };
 
-  # Settings, login, watch state, caches and the Widevine module the app downloads.
+  # Settings, login, watch state, caches and the Widevine module the app downloads. Plex HTPC
+  # 1.71 writes .local/share/plex, .cache/plex and .cache/Plex HTPC (seen in the sandbox-apps VM
+  # test, 2026-10-15).
   dataPaths = [
+    ".local/share/plex"
     ".local/share/plex-htpc"
     ".local/share/Plex HTPC"
     ".config/plex-htpc"
@@ -49,6 +53,13 @@
     ".cache/plex-htpc"
     ".cache/Plex HTPC"
   ];
+
+  permissions = {
+    # The sandbox hides /dev/input; the app reads the controller itself.
+    gamepad = "required";
+    # A Plex Media Server on the home network or on this box (Plex also works over the internet).
+    lan = "optional";
+  };
 
   app =
     { pkgs, ... }:

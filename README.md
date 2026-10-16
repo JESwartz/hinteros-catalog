@@ -56,7 +56,7 @@ M10); it is never in the Store. See [How to add an app](#adding-an-app-or-a-serv
 | `homepage` | yes | https URL; also the default `icon.siteUrl` |
 | `license` | yes | `{ free; redistributable; unfreePackages ? [ ]; }`. `unfreePackages` are the `lib.getName` names that must be allowed; required for unfree entries, empty for free ones. Checked against nixpkgs' `meta.license` |
 | `sizeMiB` | yes | Approximate download plus disk use, shown in the Store and used for the free-space check |
-| `icon` | yes | Where the session daemon finds the real icon at runtime (HinterOS ships no logos, see Icons): `desktopId` (the installed app's `.desktop` file; required for native apps), `iconUrl` (optional, https: the vendor's own public logo), `siteUrl` (defaults to `homepage`; used while the app is not installed and for web apps), `firefoxProfile = true` (web apps whose site refuses icon fetches: use the favicon the kiosk profile stored) |
+| `icon` | yes | Where the session daemon finds the real icon at runtime (HinterOS ships no logos, see Icons): `desktopId` (the installed app's `.desktop` file; required for native apps), `iconUrl` (optional, https: the vendor's own public logo) with `sha256` (required with `iconUrl`: the hex SHA-256 of that file; the daemon refuses any other file), `siteUrl` (defaults to `homepage`; used while the app is not installed and for web apps), `firefoxProfile = true` (web apps whose site refuses icon fetches: use the favicon the kiosk profile stored) |
 | `app` | apps | `{ pkgs, lib, box }: { … }`, called by the system repo's env builder. Returns `package`, `command`, `kiosk` (`url`, `userAgent`, `fullscreenOnly`), `input` (`gamepad`/`keyboard`), `backKey`, `order` and `listed` (`false`: no tile of its own, as Steam's built-in one). It takes exactly those three arguments: no `config`, an app depends on the box only through `box`. `box.firefoxKiosk` is the kiosk wrapper with its Firefox, `box.steam` is `pkgs.steam` with this box's graphics packages. The system repo sets `name` and the icon fields from metadata; an entry can never set a packaged `icon` or an unfree allowance beyond `license.unfreePackages` |
 | `box` | no (apps) | Box features the app needs, from a closed list: `graphics32` (32-bit graphics drivers and PipeWire ALSA) and `steam-devices` (controller udev rules). The system turns them on box-wide when any profile has the app. A new feature is a system-repo change (`box-features.nix`); the validator refuses unknown names. Services cannot set `box` |
 | `service` | services | A restricted NixOS module, a function of `pkgs`, `lib`, `config`, `options` or an attrset. Allowed top-level namespaces: `services`, `hardware`, `networking.firewall` and `systemd.services.<own unit>` (a unit named after one of the module's own `services.<name>`, e.g. `systemd.services.tailscaled` for `services.tailscale`). Never `nixpkgs` (no overlays or config: packages are built exactly as in nixpkgs), `imports`, `options`, `users`, `environment` (nothing is installed for profiles), `boot`, `programs` or `hinteros`. Do not wrap the whole module in `mkIf`/`mkMerge`: the validator reads its top-level names. Services have no `app`, `box`, `starter` or `onIso` |
@@ -70,12 +70,16 @@ M10); it is never in the Store. See [How to add an app](#adding-an-app-or-a-serv
 | `cache` | no | Default `false`. `true` only for an unfree entry whose unfree packages are all `unfreeRedistributable` in nixpkgs: CI builds it, the binary cache serves it and the install is a download like a free app. Checked against nixpkgs `meta.license` by `tests/packages.nix`. Free entries are always cached and must not set it. Names go into `lib.cacheableUnfree` |
 | `terms` | unfree entries | The vendor's full terms, shown in full in the install dialog before the user accepts: `{ title; version; url; retrieved; text; }`. `version` is the vendor's version or revision date (the box records which version each profile accepted), `retrieved` the date the text was copied (`YYYY-MM-DD`), `text` a plain UTF-8 file `./terms/<id>-<version>.txt`. The index carries title, version, url, retrieved and the file name `terms/<id>-<version>.txt`; the index package installs the files next to `catalog.json` |
 | `dataPaths` | no | Paths relative to a profile's home that hold the app's data. "Remove and delete data" deletes them in the removing profile's home only, after a second confirmation. No leading `/` or `~`, no `.`, `..` or empty components, no wildcards. A kiosk (web) app must list its Firefox profile, `.local/share/hinteros/firefox/<id>`. Deleting Steam's `.local/share/Steam` also removes installed games. Services keep their data in `/var/lib` and list none |
+| `permissions` | no (apps) | What the app may use in its sandbox, `{ <name> = "required" \| "optional"; }`, default `{ }`. Names: `gamepad` (`/dev/input`, device ACLs limit it to controllers, and `/run/udev`; needed by every app with `input = "gamepad"` or no `input`, the daemon's default), `mic` (a pulse socket that may record), `downloads` (the profile's `~/Downloads`, read-write), `lan` (the local network: devices at home and this box's own services; without it the app reaches only DNS and the internet). The install sheet shows them all switched on; the user can switch optional ones off (then and on the app's page). The validator refuses other names and values. In the index |
+| `sandbox` | no (apps) | Default `true`: the session daemon starts the app in its bwrap sandbox, with its own home `.local/share/hinteros/sandbox/<id>` (added to `dataPaths` automatically). `false` only for Steam, which runs its own sandbox; such an app has no `permissions`. In the index |
 | `notes` | no | Maintainer notes (upstream quirks, review findings); not in the index |
 
 Derived fields in `catalog` and the index: `id`, `type` (`web` if `app.kiosk` is set, else
 `native`; `service` for services; `apps.list`'s web/native `kind` is this `type`) and
 `buildsOnDevice` (true for unfree entries without `cache`: only `cache = true` unfree entries are
-in the vendor cache, and nothing unfree is ever on the ISO).
+in the vendor cache, and nothing unfree is ever on the ISO). For a sandboxed app, `dataPaths`
+also has its sandbox home, `.local/share/hinteros/sandbox/<id>`, and `sandbox` is always `false`
+for services.
 
 ### Library outputs for the system repo
 
@@ -90,9 +94,12 @@ The pure versions (`appsOnlyOf`, `servicesOf`, `featuresOfIn`, `servicesNeededBy
 
 The repo never contains logos or other images. An entry may instead link to the vendor's own
 public logo with `icon.iconUrl`; the box's session daemon downloads it at runtime (https only,
-at most 1 MiB, image content-type and magic bytes checked), caches it under
-`~/.cache/hinteros/icons` and refreshes it about monthly. The index carries `iconUrl`, so the
-launcher's Store can show logos before an app is installed. Priority, first hit wins:
+at most 1 MiB, image content-type and magic bytes checked, and only the file whose SHA-256 is
+`icon.sha256`), caches it under `~/.cache/hinteros/icons` and refreshes it about monthly. A
+changed or replaced file upstream is refused (logged on the box) until the entry gets the new
+hash. The index carries `iconUrl` and `sha256` (optional in the schema, indexVersion stays 3:
+the daemon reads older indexes without it and then checks no hash), so the launcher's Store can
+show logos before an app is installed. Priority, first hit wins:
 
 1. the installed app's own desktop icon (`desktopId`)
 2. `iconUrl`
@@ -104,10 +111,11 @@ Choosing an `iconUrl`: a square PNG or SVG of at least 192 px, hosted on the ven
 project's own domain (or its official GitHub organisation, for open-source projects), never a
 Wikimedia page or third-party mirror, and as stable as possible (press-kit or branding-repo
 assets over CDN hashes). Say in a comment where it came from and the date it was checked. If no
-suitable official URL exists, leave `iconUrl` unset and say why; the fallbacks cover it.
+suitable official URL exists, leave `iconUrl` unset and say why; the fallbacks cover it. Set
+`sha256` to the file's hash: `curl -sSL <iconUrl> | sha256sum`; look at the file first.
 
 `nix run .#check-icon-urls` fetches every `iconUrl`, `siteUrl` and `terms.url` (HTTP 200; for
-`iconUrl` also an image content-type, at most 1 MiB and image magic bytes), prints a table and
+`iconUrl` also an image content-type, at most 1 MiB, image magic bytes and the `sha256`), prints a table and
 exits non-zero on failures. It needs network, so it is not part of `nix flake check`; the
 scheduled `.forgejo/workflows/links.yml` runs it weekly.
 
@@ -173,6 +181,9 @@ with `box` features, not a service.
      and `retrieved` are right, and the file is named `<id>-<version>.txt`.
    - `dataPaths` lists every directory the app writes under a profile's home (check on a box:
      `~/.config`, `~/.local/share`, `~/.cache`, dotfiles), and nothing shared with other apps.
+     A sandboxed app writes only inside its sandbox home, which is listed automatically.
+   - `permissions` lists what the app needs in its sandbox and nothing more: `gamepad = "required"`
+     for `input = "gamepad"` or no `input`, optional for anything the app works without.
    - The icon resolves on a box: `desktopId` matches the installed `.desktop` file, `iconUrl` (if any) passes `nix run .#check-icon-urls` and `siteUrl`
      serves a usable icon (or `firefoxProfile` is set).
    - `sizeMiB` measured on a box (`nix path-info -S` of the closure minus what the box already has).

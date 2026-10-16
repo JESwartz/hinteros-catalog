@@ -20,6 +20,7 @@
   icon = {
     # Vendor's own icon, found in its site/manifest, checked 2026-10-07: its web app manifest (https://tubitv.com/manifest.json), 192x192 PNG on Tubi's mcdn.tubitv.com.
     iconUrl = "https://mcdn.tubitv.com/web/repaint/android-chrome-192x192.png";
+    sha256 = "0ed5fcb2b1909655e7cd9b7121f9083fab3e420cf633e272dde7260235d989b2";
     firefoxProfile = true;
   };
   onIso = true;

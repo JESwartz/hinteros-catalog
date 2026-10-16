@@ -18,6 +18,7 @@
     desktopId = "com.moonlight_stream.Moonlight";
     # Project's own site (web app manifest of moonlight-stream.org, source: github.com/moonlight-stream/moonlight-stream.github.io, images/manifest/icons-512.png). 512x512 PNG. Checked 2026-10-06.
     iconUrl = "https://moonlight-stream.org/images/manifest/icons-512.png";
+    sha256 = "46e574737bb8777932049e6a90c577fca9656d8ee14a6228209cbfcb0885ba8b";
   };
   # Pairing keys and settings (QSettings, organisation and app name "Moonlight Game Streaming Project").
   dataPaths = [
@@ -25,6 +26,13 @@
     ".cache/Moonlight Game Streaming Project"
     ".local/share/Moonlight Game Streaming Project"
   ];
+
+  permissions = {
+    # The sandbox hides /dev/input; the app reads the controller itself.
+    gamepad = "required";
+    # It streams from a PC on the home network.
+    lan = "required";
+  };
 
   app =
     { pkgs, ... }:

@@ -52,6 +52,20 @@ let
     "graphics32" # hardware.graphics.enable32Bit, services.pipewire.alsa.support32Bit
     "steam-devices" # hardware.steam-hardware.enable (controller udev rules)
   ];
+  # Sandbox permissions an app can declare (`permissions = { <name> = <level>; }`). The session
+  # daemon enforces each one in its bwrap sandbox; a permission that is not enforced is not listed.
+  permissionNames = [
+    "gamepad" # /dev/input (device ACLs limit it to controllers) and /run/udev
+    "mic" # a pulse socket that may record
+    "downloads" # the profile's ~/Downloads, read-write
+    "lan" # the local network (home devices, this box's own services); without it only DNS and the internet
+  ];
+  permissionLevels = [
+    "required" # always granted
+    "optional" # granted unless the profile user switches it off
+  ];
+  # The sandboxed app's home, below the profile's home (bound at the real $HOME path inside).
+  sandboxHome = id: ".local/share/hinteros/sandbox/${id}";
   # What `app` receives: `{ pkgs, lib, box }` and nothing else (no `config`).
   appArgs = [
     "pkgs"
@@ -172,7 +186,7 @@ let
     icon = {
       required = true;
       check = isAttrs;
-      what = "an attrset { desktopId?; siteUrl?; iconUrl?; firefoxProfile?; }";
+      what = "an attrset { desktopId?; siteUrl?; iconUrl?; sha256?; firefoxProfile?; }";
     };
     status = {
       default = "available";
@@ -243,6 +257,20 @@ let
       default = null;
       check = either isNull isFn;
       what = "null or a restricted NixOS module: a function of pkgs, lib, config, options, or an attrset (services only)";
+    };
+    permissions = {
+      default = { };
+      check =
+        v:
+        isAttrs v
+        && lib.all (n: elem n permissionNames) (attrNames v)
+        && lib.all (oneOf permissionLevels) (lib.attrValues v);
+      what = "an attrset of permissions (${lib.concatStringsSep ", " permissionNames}), each \"required\" or \"optional\"";
+    };
+    sandbox = {
+      default = true;
+      check = isBool;
+      what = "a bool";
     };
     packages = {
       default = null;
@@ -376,6 +404,7 @@ let
             "desktopId"
             "siteUrl"
             "iconUrl"
+            "sha256"
             "firefoxProfile"
           ] (attrNames ic);
         in
@@ -387,6 +416,13 @@ let
         ++ lib.optional (
           ic ? iconUrl && !(isHttps ic.iconUrl && stringLength ic.iconUrl <= 500)
         ) "icon.iconUrl: an https URL of the vendor's own public logo (at most 500 characters)"
+        ++ lib.optional (
+          ic ? iconUrl && !(ic ? sha256)
+        ) "icon.sha256: required with iconUrl (the file's SHA-256, 64 lowercase hex digits)"
+        ++ lib.optional (
+          ic ? sha256 && !(isString ic.sha256 && builtins.match "[0-9a-f]{64}" ic.sha256 != null)
+        ) "icon.sha256: 64 lowercase hex digits (the SHA-256 of the iconUrl file)"
+        ++ lib.optional (ic ? sha256 && !(ic ? iconUrl)) "icon.sha256: only with iconUrl"
         ++ lib.optional (ic ? firefoxProfile && !isBool ic.firefoxProfile) "icon.firefoxProfile: a bool"
         ++ lib.optional (
           (ic.firefoxProfile or false) && full.type != "web"
@@ -428,7 +464,14 @@ let
               "keyboard"
             ]
           ) "app.input: gamepad or keyboard"
-          ++ lib.optional (appAttrs ? listed && !isBool appAttrs.listed) "app.listed: a bool";
+          ++ lib.optional (appAttrs ? listed && !isBool appAttrs.listed) "app.listed: a bool"
+          ++
+            lib.optional
+              (
+                # No input: the daemon's default, gamepad.
+                (appAttrs.input or "gamepad") == "gamepad" && full.sandbox && !(full.permissions ? gamepad)
+              )
+              "permissions.gamepad: required for input = \"gamepad\" or no input (the sandbox hides /dev/input)";
 
       serviceBadArgs = badArgs serviceArgs full.service;
       serviceAttrs = callStub full.service;
@@ -474,8 +517,13 @@ let
           ++ lib.optional (e ? starter) "starter: only for apps"
           ++ lib.optional (e ? onIso) "onIso: only for apps"
           ++ lib.optional (e ? needsServices) "needsServices: only for apps (a service cannot need a service)"
+          ++ lib.optional (e ? permissions) "permissions: only for apps"
+          ++ lib.optional (e ? sandbox) "sandbox: only for apps"
         else
           lib.optional (full.app == null) "app: required for kind = \"app\" (or status = \"removed\")"
+          ++ lib.optional (
+            !full.sandbox && full.permissions != { }
+          ) "permissions: only for sandboxed apps (sandbox = false has every permission)"
           ++ lib.optional (
             full.service != null
           ) "service: only for kind = \"service\" (an app has `app` and `box`)";
@@ -572,6 +620,7 @@ let
         }
         // e;
       appAttrs = callStub withDefaults.app;
+      sandbox = withDefaults.kind == "app" && withDefaults.status != "removed" && withDefaults.sandbox;
       lic = {
         unfreePackages = [ ];
       }
@@ -579,8 +628,10 @@ let
     in
     withDefaults
     // {
-      inherit id;
+      inherit id sandbox;
       license = lic;
+      # A sandboxed app's whole home is app data: "delete data" removes it too.
+      dataPaths = lib.unique (withDefaults.dataPaths ++ lib.optional sandbox (sandboxHome id));
       # `kind` is the entry kind; `type` what the entry is: web/native apps, or a service.
       type =
         if withDefaults.kind == "service" then
@@ -701,6 +752,8 @@ let
           statusReason
           buildsOnDevice
           cache
+          permissions
+          sandbox
           ;
         inherit (e.license) free redistributable;
         description = reflow e.description;
@@ -802,6 +855,9 @@ in
     statuses
     features
     boxMembers
+    permissionNames
+    permissionLevels
+    sandboxHome
     appKeys
     serviceKeys
     checkEntry

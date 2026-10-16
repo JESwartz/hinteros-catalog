@@ -25,6 +25,7 @@
     # VacuumTube's own repository (assets/icon.png, 1024x1024 PNG, MIT). Checked 2026-10-07.
     desktopId = "VacuumTube";
     iconUrl = "https://raw.githubusercontent.com/shy1132/VacuumTube/main/assets/icon.png";
+    sha256 = "a315a1175e5835eee596891a65c57ace8d24ba940e464854c7f0d380e56802e7";
   };
   # Offered, not ticked: the YouTube entry already covers the same service.
   starter = "offered";
@@ -33,6 +34,9 @@
     ".config/VacuumTube"
     ".cache/VacuumTube"
   ];
+
+  # The sandbox hides /dev/input; the app reads the controller itself.
+  permissions.gamepad = "required";
 
   app =
     { pkgs, ... }:

@@ -17,7 +17,11 @@ let
     };
     sizeMiB = 10;
     icon.desktopId = "org.example.Example";
-    app = { pkgs, ... }: { package = pkgs.hello; };
+    # Keyboard input: no gamepad permission needed (the default input is gamepad).
+    app = { pkgs, ... }: {
+      package = pkgs.hello;
+      input = "keyboard";
+    };
   };
 
   terms = {
@@ -292,7 +296,10 @@ let
         good
         // {
           icon = { };
-          app = _: { kiosk.url = "https://example.org"; };
+          app = _: {
+            kiosk.url = "https://example.org";
+            input = "keyboard";
+          };
           dataPaths = [ ".local/share/hinteros/firefox/example" ];
         }
       );
@@ -366,6 +373,7 @@ let
           ];
           app = { box, ... }: {
             package = box.steam;
+            input = "keyboard";
             listed = false;
           };
         }
@@ -840,6 +848,132 @@ let
         false
       ];
     };
+    testPermissionsPass = {
+      expr = problems "example" (
+        good
+        // {
+          permissions = {
+            gamepad = "required";
+            mic = "optional";
+            downloads = "optional";
+            lan = "optional";
+          };
+        }
+      );
+      expected = [ ];
+    };
+    testPermissionsRefused = {
+      expr = map (v: refuses "permissions: must be" (good // { permissions = v; })) [
+        { camera = "optional"; }
+        { mic = "maybe"; }
+        { mic = true; }
+        [ "mic" ]
+      ];
+      expected = lib.genList (_: true) 4;
+    };
+    testSandboxMustBeBool = {
+      expr = refuses "sandbox: must be a bool" (good // { sandbox = "no"; });
+      expected = true;
+    };
+    testGamepadInputNeedsPermission = {
+      expr = refuses "permissions.gamepad: required for input" (
+        good
+        // {
+          app = { pkgs, ... }: {
+            package = pkgs.hello;
+            input = "gamepad";
+          };
+        }
+      );
+      expected = true;
+    };
+    testNoInputNeedsPermission = {
+      expr = refuses "permissions.gamepad: required for input" (
+        good // { app = { pkgs, ... }: { package = pkgs.hello; }; }
+      );
+      expected = true;
+    };
+    testGamepadInputUnsandboxedPasses = {
+      expr = problems "example" (
+        good
+        // {
+          sandbox = false;
+          app = { pkgs, ... }: {
+            package = pkgs.hello;
+            input = "gamepad";
+          };
+        }
+      );
+      expected = [ ];
+    };
+    testUnsandboxedHasNoPermissions = {
+      expr = refuses "permissions: only for sandboxed apps" (
+        good
+        // {
+          sandbox = false;
+          permissions.mic = "optional";
+        }
+      );
+      expected = true;
+    };
+    testServiceHasNoSandboxFields = {
+      expr = [
+        (refuses "permissions: only for apps" (goodService // { permissions.mic = "optional"; }))
+        (refuses "sandbox: only for apps" (goodService // { sandbox = false; }))
+      ];
+      expected = [
+        true
+        true
+      ];
+    };
+    testSandboxDataPath = {
+      expr = {
+        sandboxed = (catalogLib.normalize "x" (good // { dataPaths = [ ".config/x" ]; })).dataPaths;
+        listedTwice =
+          (catalogLib.normalize "x" (good // { dataPaths = [ ".local/share/hinteros/sandbox/x" ]; }))
+          .dataPaths;
+        unsandboxed = (catalogLib.normalize "x" (good // { sandbox = false; })).dataPaths;
+        service = (catalogLib.normalize "s" goodService).dataPaths;
+      };
+      expected = {
+        sandboxed = [
+          ".config/x"
+          ".local/share/hinteros/sandbox/x"
+        ];
+        listedTwice = [ ".local/share/hinteros/sandbox/x" ];
+        unsandboxed = [ ];
+        service = [ ];
+      };
+    };
+    testIndexCarriesPermissions = {
+      expr =
+        map
+          (e: {
+            inherit (e) id permissions sandbox;
+          })
+          (catalogLib.mkIndex {
+            a = catalogLib.normalize "a" (good // { permissions.gamepad = "required"; });
+            b = catalogLib.normalize "b" (good // { sandbox = false; });
+            s = catalogLib.normalize "s" goodService;
+          }).apps;
+      expected = [
+        {
+          id = "a";
+          permissions.gamepad = "required";
+          sandbox = true;
+        }
+        {
+          id = "b";
+          permissions = { };
+          sandbox = false;
+        }
+        {
+          id = "s";
+          permissions = { };
+          sandbox = false;
+        }
+      ];
+    };
     testRetiredNeedsReason = {
       expr = refuses "statusReason: required" (good // { status = "retired"; });
       expected = true;
@@ -884,10 +1018,59 @@ let
           icon = {
             desktopId = "org.example.Example";
             iconUrl = "https://example.org/logo.png";
+            sha256 = "abababababababababababababababababababababababababababababababab";
           };
         }
       );
       expected = [ ];
+    };
+    testIconUrlNeedsSha256 = {
+      expr = refuses "icon.sha256: required with iconUrl" (
+        good
+        // {
+          icon = {
+            desktopId = "x";
+            iconUrl = "https://example.org/logo.png";
+          };
+        }
+      );
+      expected = true;
+    };
+    testBadSha256 = {
+      expr =
+        map
+          (
+            h:
+            refuses "icon.sha256: 64 lowercase hex digits" (
+              good
+              // {
+                icon = {
+                  desktopId = "x";
+                  iconUrl = "https://example.org/logo.png";
+                  sha256 = h;
+                };
+              }
+            )
+          )
+          [
+            "abc"
+            (lib.toUpper "abababababababababababababababababababababababababababababababab")
+            "sha256-AAAA"
+            5
+          ];
+      expected = lib.genList (_: true) 4;
+    };
+    testSha256NeedsIconUrl = {
+      expr = refuses "icon.sha256: only with iconUrl" (
+        good
+        // {
+          icon = {
+            desktopId = "x";
+            sha256 = "abababababababababababababababababababababababababababababababab";
+          };
+        }
+      );
+      expected = true;
     };
     testIconUrlRejectsOtherSchemes = {
       expr =
@@ -937,12 +1120,18 @@ let
                 icon = {
                   desktopId = "x";
                   iconUrl = "https://example.org/l.png";
+                  sha256 = "abababababababababababababababababababababababababababababababab";
                 };
               }
             );
           }).apps
-        ).icon.iconUrl;
-      expected = "https://example.org/l.png";
+        ).icon;
+      expected = {
+        desktopId = "x";
+        iconUrl = "https://example.org/l.png";
+        sha256 = "abababababababababababababababababababababababababababababababab";
+        siteUrl = "https://example.org";
+      };
     };
     testSiteUrlDefaultsToHomepage = {
       expr = (catalogLib.normalize "x" good).icon;
