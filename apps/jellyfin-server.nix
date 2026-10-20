@@ -26,17 +26,32 @@
     sha256 = "817c25b47442b192250448fe48cd5f265fe9183bc75aa12030bbe335495255d1";
   };
 
-  service =
-    { lib, ... }:
-    {
-      services.jellyfin.enable = true;
-      # M10: the system repo adds a LAN-only firewall rule instead.
-      services.jellyfin.openFirewall = lib.mkDefault false;
-    };
+  service = _: {
+    services.jellyfin.enable = true;
+  };
   packages = pkgs: [ pkgs.jellyfin ];
+
+  # Web UI and API, and client discovery. Local networks and Tailscale only: Jellyfin is not
+  # meant to face the internet without a reverse proxy.
+  ports = [
+    {
+      port = 8096;
+      proto = "tcp";
+      from = "lan";
+    }
+    {
+      port = 7359;
+      proto = "udp";
+      from = "lan";
+    }
+  ];
+  setup = "jellyfin";
+  stateDirs = [ "jellyfin" ];
 
   notes = ''
     Data lives in /var/lib/jellyfin (the service user's), not in a profile's home, so there are no
-    dataPaths. Library folders and the firewall rule are M10 work in the system repo.
+    dataPaths. The system repo (server.nix) runs the first-run wizard in a private network
+    namespace before the service starts, sets up hardware transcoding, /srv/media and the
+    firewall from `ports`. The cache in /var/cache/jellyfin is removed with the data.
   '';
 }

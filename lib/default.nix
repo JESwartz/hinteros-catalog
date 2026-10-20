@@ -103,15 +103,32 @@ let
     "config"
     "options"
   ];
-  # Top-level NixOS namespaces a service may set, narrowed below: `networking` to `firewall`,
-  # `systemd` to `services.<own unit>`. No `nixpkgs` (overlays or config would change how
-  # packages are built), `imports`, `options`, `users`, `environment` (nothing is installed for
-  # profiles) or `hinteros`.
+  # Top-level NixOS namespaces a service may set, narrowed below: `systemd` to
+  # `services.<own unit>`. No `networking` (open ports come from `ports`, which the system repo
+  # turns into firewall rules), `nixpkgs` (overlays or config would change how packages are
+  # built), `imports`, `options`, `users`, `environment` (nothing is installed for profiles) or
+  # `hinteros`.
   serviceKeys = [
     "services"
     "hardware"
-    "networking"
     "systemd"
+  ];
+  # Setup flows the daemon and launcher show for a service (`setup`). A new one is a daemon and
+  # launcher change.
+  setupKinds = [
+    "jellyfin" # first run done by the system, libraries, one user per profile
+    "plex" # claim code from plex.tv/claim
+    "tailscale" # sign in by QR
+    "cloudflare" # Zero Trust tunnel token
+  ];
+  # Who may reach a service port (`ports.*.from`).
+  portSources = [
+    "lan" # the local networks (the system's list) and the tailscale0 interface
+    "any" # every source (a service that does its own remote access, e.g. Plex)
+  ];
+  portProtos = [
+    "tcp"
+    "udp"
   ];
 
   idPattern = "[a-z0-9][a-z0-9-]{0,31}";
@@ -128,6 +145,23 @@ let
     isText 200 v
     && builtins.match "[/~].*|.*[*?$`].*" v == null
     && lib.all (c: c != "" && c != "." && c != "..") (lib.splitString "/" v);
+  # Relative path below /var/lib (a service's state directory): the same rules as isHomePath,
+  # and only letters, digits, `.`, `_`, `-` and `/`.
+  isVarLibPath = v: isHomePath v && builtins.match "[A-Za-z0-9._/-]+" v != null;
+  isPort =
+    v:
+    isAttrs v
+    &&
+      lib.sort lib.lessThan (attrNames v) == [
+        "from"
+        "port"
+        "proto"
+      ]
+    && isInt v.port
+    && v.port >= 1
+    && v.port <= 65535
+    && elem v.proto portProtos
+    && elem v.from portSources;
   isNull = v: v == null;
   isFn = v: isFunction v || isAttrs v;
   listOf = p: v: isList v && lib.all p v;
@@ -257,6 +291,21 @@ let
       default = null;
       check = either isNull isFn;
       what = "null or a restricted NixOS module: a function of pkgs, lib, config, options, or an attrset (services only)";
+    };
+    ports = {
+      default = [ ];
+      check = listOf isPort;
+      what = "a list of { port (1-65535); proto (${lib.concatStringsSep "/" portProtos}); from (${lib.concatStringsSep "/" portSources}); } (services only)";
+    };
+    setup = {
+      default = null;
+      check = either isNull (oneOf setupKinds);
+      what = "null or one of ${lib.concatStringsSep ", " setupKinds} (services only)";
+    };
+    stateDirs = {
+      default = [ ];
+      check = listOf isVarLibPath;
+      what = "a list of paths relative to /var/lib (letters, digits, . _ - /; no ., .. or empty components) (services only)";
     };
     permissions = {
       default = { };
@@ -487,7 +536,6 @@ let
         else
           let
             bad = lib.subtractLists serviceKeys (attrNames serviceAttrs);
-            badNet = lib.subtractLists [ "firewall" ] (attrNames (serviceAttrs.networking or { }));
             systemd = serviceAttrs.systemd or { };
             badSystemd = lib.subtractLists [ "services" ] (attrNames systemd);
             # `systemd.services.<own unit>`: a unit named after one of the module's own
@@ -496,12 +544,16 @@ let
             badUnits = lib.filter (u: !lib.any (o: lib.hasPrefix o u) owners) (
               attrNames (systemd.services or { })
             );
+            # Open ports come from `ports` only: no module's own openFirewall, whatever its value.
+            openFw = lib.filter (
+              o: isAttrs serviceAttrs.services.${o} && serviceAttrs.services.${o} ? openFirewall
+            ) owners;
           in
           lib.optional (bad != [ ])
-            "service: top-level key(s) not allowed: ${lib.concatStringsSep ", " bad} (allowed: services, hardware, networking.firewall, systemd.services.<own unit>)"
+            "service: top-level key(s) not allowed: ${lib.concatStringsSep ", " bad} (allowed: services, hardware, systemd.services.<own unit>; open ports with `ports`)"
           ++
-            lib.optional (badNet != [ ])
-              "service: networking.${lib.concatStringsSep ", networking." badNet} not allowed (only networking.firewall)"
+            lib.optional (openFw != [ ])
+              "service: services.${lib.concatStringsSep ", services." openFw}.openFirewall not allowed (open ports with `ports`)"
           ++
             lib.optional (badSystemd != [ ])
               "service: systemd.${lib.concatStringsSep ", systemd." badSystemd} not allowed (only systemd.services.<own unit>)"
@@ -519,8 +571,17 @@ let
           ++ lib.optional (e ? needsServices) "needsServices: only for apps (a service cannot need a service)"
           ++ lib.optional (e ? permissions) "permissions: only for apps"
           ++ lib.optional (e ? sandbox) "sandbox: only for apps"
+          ++ lib.optional (
+            fields.ports.check full.ports
+            &&
+              lib.length (lib.unique (map (p: "${toString p.port}/${p.proto}") full.ports))
+              != lib.length full.ports
+          ) "ports: each port and proto at most once"
         else
           lib.optional (full.app == null) "app: required for kind = \"app\" (or status = \"removed\")"
+          ++ lib.optional (e ? ports) "ports: only for services"
+          ++ lib.optional (e ? setup) "setup: only for services"
+          ++ lib.optional (e ? stateDirs) "stateDirs: only for services (apps list dataPaths)"
           ++ lib.optional (
             !full.sandbox && full.permissions != { }
           ) "permissions: only for sandboxed apps (sandbox = false has every permission)"
@@ -754,6 +815,9 @@ let
           cache
           permissions
           sandbox
+          ports
+          setup
+          stateDirs
           ;
         inherit (e.license) free redistributable;
         description = reflow e.description;

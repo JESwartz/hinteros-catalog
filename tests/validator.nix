@@ -537,7 +537,6 @@ let
           service = _: {
             services.example.enable = true;
             hardware.bluetooth.enable = true;
-            networking.firewall.allowedTCPPorts = [ 8096 ];
             systemd.services.example.serviceConfig.Nice = 5;
             systemd.services.example-worker.serviceConfig.Nice = 5;
           };
@@ -545,17 +544,163 @@ let
       );
       expected = [ ];
     };
-    testServiceNetworkingOnlyFirewall = {
-      expr = refuses "networking.hostName not allowed" (
+    testServiceNoNetworking = {
+      expr =
+        map
+          (
+            m: refuses "service: top-level key(s) not allowed: networking" (goodService // { service = _: m; })
+          )
+          [
+            {
+              networking.hostName = "x";
+              services.example.enable = true;
+            }
+            {
+              networking.firewall.allowedTCPPorts = [ 8096 ];
+              services.example.enable = true;
+            }
+          ];
+      expected = [
+        true
+        true
+      ];
+    };
+    testServiceNoOpenFirewall = {
+      expr =
+        map
+          (
+            v:
+            refuses "services.example.openFirewall not allowed" (
+              goodService
+              // {
+                service = _: {
+                  services.example = {
+                    enable = true;
+                    openFirewall = v;
+                  };
+                };
+              }
+            )
+          )
+          [
+            true
+            false
+          ];
+      expected = [
+        true
+        true
+      ];
+    };
+    testServicePortsSetupStateDirs = {
+      expr = problems "example" (
         goodService
         // {
-          service = _: {
-            networking.hostName = "x";
-            services.example.enable = true;
-          };
+          ports = [
+            {
+              port = 8096;
+              proto = "tcp";
+              from = "lan";
+            }
+            {
+              port = 8096;
+              proto = "udp";
+              from = "any";
+            }
+          ];
+          setup = "jellyfin";
+          stateDirs = [
+            "example"
+            "hinteros/services/example"
+          ];
+        }
+      );
+      expected = [ ];
+    };
+    testBadPorts = {
+      expr = map (p: refuses "ports: must be a list of" (goodService // { ports = [ p ]; })) [
+        {
+          port = 0;
+          proto = "tcp";
+          from = "lan";
+        }
+        {
+          port = 65536;
+          proto = "tcp";
+          from = "lan";
+        }
+        {
+          port = 80;
+          proto = "sctp";
+          from = "lan";
+        }
+        {
+          port = 80;
+          proto = "tcp";
+          from = "wan";
+        }
+        {
+          port = "80";
+          proto = "tcp";
+          from = "lan";
+        }
+        {
+          port = 80;
+          proto = "tcp";
+        }
+        {
+          port = 80;
+          proto = "tcp";
+          from = "lan";
+          range = 2;
+        }
+      ];
+      expected = lib.genList (_: true) 7;
+    };
+    testDuplicatePorts = {
+      expr = refuses "ports: each port and proto at most once" (
+        goodService
+        // {
+          ports = lib.genList (_: {
+            port = 80;
+            proto = "tcp";
+            from = "lan";
+          }) 2;
         }
       );
       expected = true;
+    };
+    testBadSetup = {
+      expr = refuses "setup: must be null or one of" (goodService // { setup = "samba"; });
+      expected = true;
+    };
+    testBadStateDirs = {
+      expr = map (d: refuses "stateDirs: must be a list of" (goodService // { stateDirs = [ d ]; })) [
+        "/var/lib/x"
+        "../etc"
+        "a/../b"
+        "a//b"
+        "a b"
+        "a/."
+        ""
+      ];
+      expected = lib.genList (_: true) 7;
+    };
+    testServiceFieldsOnlyForServices = {
+      expr = [
+        (refuses "ports: only for services" (
+          good
+          // {
+            ports = [ ];
+          }
+        ))
+        (refuses "setup: only for services" (good // { setup = null; }))
+        (refuses "stateDirs: only for services" (good // { stateDirs = [ ]; }))
+      ];
+      expected = [
+        true
+        true
+        true
+      ];
     };
     testServiceOwnUnitOnly = {
       expr = refuses "systemd.services.sshd is not the module's own unit" (

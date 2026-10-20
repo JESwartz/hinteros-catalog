@@ -131,6 +131,29 @@
         "sandbox": {
           "type": "boolean",
           "description": "The session daemon starts the app in its sandbox (all apps except Steam). Always false for services. Missing: true for apps"
+        },
+        "ports": {
+          "type": "array",
+          "description": "Services: ports the system opens while the service is on. lan: the local networks and tailscale0; any: every source. Empty for apps. Missing: none",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["port", "proto", "from"],
+            "properties": {
+              "port": { "type": "integer", "minimum": 1, "maximum": 65535 },
+              "proto": { "enum": ["tcp", "udp"] },
+              "from": { "enum": ["lan", "any"] }
+            }
+          }
+        },
+        "setup": {
+          "description": "Services: the setup flow the Server section shows. Unknown values: show only on/off. null for apps and services without setup. Missing: null",
+          "enum": [null, "jellyfin", "plex", "tailscale", "cloudflare"]
+        },
+        "stateDirs": {
+          "type": "array",
+          "description": "Services: directories below /var/lib that 'delete server data' removes. Empty for apps. Missing: none",
+          "items": { "type": "string", "pattern": "^[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+)*$", "not": { "pattern": "(^|/)\\.\\.?(/|$)" } }
         }
       }
     },
