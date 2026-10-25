@@ -14,6 +14,12 @@
   '';
   category = "video";
   homepage = "https://github.com/shy1132/VacuumTube";
+  # The upstream README, unmodified (see README, "Upstream READMEs").
+  readme = {
+    url = "https://github.com/shy1132/VacuumTube/blob/21ed770379deefc123c1026774b7d8fc1bc0d84b/README.md";
+    retrieved = "2026-10-25";
+    text = ./readme/vacuum-tube.md;
+  };
   license = {
     free = true;
     redistributable = true;

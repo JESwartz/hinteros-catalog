@@ -25,6 +25,7 @@
       inherit (nixpkgs) lib;
       catalogLib = import ./lib { inherit lib; };
       termsEntries = lib.filter (e: e.terms or null != null) (lib.attrValues self.catalog);
+      readmeEntries = lib.filter (e: e.readme or null != null) (lib.attrValues self.catalog);
     in
     {
       # Entry format implementation (validator, normalizer, index), pure: needs only `lib`.
@@ -54,8 +55,8 @@
       catalogIndex = catalogLib.mkIndex self.catalog;
 
       packages.${system} = {
-        # $out/share/hinteros/catalog.json plus terms/*.txt (the vendor terms it references, so
-        # the launcher shows them offline): the system repo installs it, so a box finds the
+        # $out/share/hinteros/catalog.json plus terms/*.txt and readme/*.md (the vendor terms and
+        # upstream READMEs it references, so the launcher shows them offline): the system repo installs it, so a box finds the
         # index of its running generation at /run/current-system/sw/share/hinteros/catalog.json.
         index =
           pkgs.runCommand "hinteros-catalog-index"
@@ -65,11 +66,14 @@
               json = builtins.toJSON self.catalogIndex;
             }
             ''
-              mkdir -p $out/share/hinteros/terms
+              mkdir -p $out/share/hinteros/terms $out/share/hinteros/readme
               jq --sort-keys . "$jsonPath" > $out/share/hinteros/catalog.json
               ${lib.concatMapStringsSep "\n" (
                 e: "cp ${e.terms.text} $out/share/hinteros/terms/${baseNameOf e.terms.text}"
               ) termsEntries}
+              ${lib.concatMapStringsSep "\n" (
+                e: "cp ${e.readme.text} $out/share/hinteros/readme/${baseNameOf e.readme.text}"
+              ) readmeEntries}
             '';
         default = self.packages.${system}.index;
       };
@@ -101,6 +105,11 @@
               for f in $(jq -r '.apps[].terms.file // empty' $idx/catalog.json); do
                 test -s "$idx/$f"
                 if head -c 200 "$idx/$f" | grep -q TODO; then echo "$f is a TODO stub" >&2; exit 1; fi
+              done
+              # Every README the index references exists, is non-empty and at most 64 KiB.
+              for f in $(jq -r '.apps[].readme.file // empty' $idx/catalog.json); do
+                test -s "$idx/$f"
+                if [ "$(stat -c %s "$idx/$f")" -gt 65536 ]; then echo "$f is over 64 KiB" >&2; exit 1; fi
               done
               touch $out
             '';

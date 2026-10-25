@@ -11,6 +11,12 @@
   '';
   category = "video";
   homepage = "https://jellyfin.org";
+  # The upstream README, unmodified (see README, "Upstream READMEs").
+  readme = {
+    url = "https://github.com/jellyfin/jellyfin-desktop/blob/2cb4a4456fd29b5b62d825ef0e5df93ed6913328/README.md";
+    retrieved = "2026-10-25";
+    text = ./readme/jellyfin.md;
+  };
   license = {
     free = true;
     redistributable = true;

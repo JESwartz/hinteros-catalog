@@ -10,6 +10,12 @@
   '';
   category = "utilities";
   homepage = "https://www.mozilla.org/firefox/";
+  # The upstream README, unmodified (see README, "Upstream READMEs").
+  readme = {
+    url = "https://github.com/mozilla-firefox/firefox/blob/efd2d1e6f77570ae6bc5294731a68101e45c81a3/README.md";
+    retrieved = "2026-10-25";
+    text = ./readme/firefox.md;
+  };
   license = {
     free = true;
     redistributable = true;

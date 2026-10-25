@@ -9,6 +9,12 @@
   '';
   category = "games";
   homepage = "https://moonlight-stream.org";
+  # The upstream README, unmodified (see README, "Upstream READMEs").
+  readme = {
+    url = "https://github.com/moonlight-stream/moonlight-qt/blob/ac296864ace96f51ad75f78b90644bdbca76c332/README.md";
+    retrieved = "2026-10-25";
+    text = ./readme/moonlight.md;
+  };
   license = {
     free = true;
     redistributable = true;

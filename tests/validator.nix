@@ -31,6 +31,11 @@ let
     retrieved = "2026-10-06";
     text = ./fixtures/example-1.0.txt;
   };
+  readme = {
+    url = "https://github.com/example/example/blob/0123456789abcdef0123456789abcdef01234567/README.md";
+    retrieved = "2026-10-25";
+    text = ./fixtures/example.md;
+  };
   unfreeRedistributable = {
     license = {
       free = false;
@@ -250,6 +255,46 @@ let
         true
         true
       ];
+    };
+    testReadmePasses = {
+      expr = problems "example" (good // { inherit readme; });
+      expected = [ ];
+    };
+    testReadmeFields = {
+      expr = map (r: refuses "readme." (good // { readme = readme // r; })) [
+        { url = "http://x.org"; }
+        { retrieved = "today"; }
+        { text = "/not/a/path.md"; }
+        { text = ./fixtures/example-1.0.txt; }
+      ];
+      expected = [
+        true
+        true
+        true
+        true
+      ];
+    };
+    testReadmeUnknownField = {
+      expr = refuses "readme: unknown field(s) extra" (
+        good
+        // {
+          readme = readme // {
+            extra = 1;
+          };
+        }
+      );
+      expected = true;
+    };
+    testReadmeInIndex = {
+      expr =
+        (lib.head
+          (catalogLib.mkIndex { example = catalogLib.normalize "example" (good // { inherit readme; }); })
+          .apps
+        ).readme;
+      expected = {
+        inherit (readme) url retrieved;
+        file = "readme/example.md";
+      };
     };
     testTermsPasses = {
       expr = problems "example" (good // { inherit terms; });

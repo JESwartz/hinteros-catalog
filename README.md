@@ -10,13 +10,14 @@ never fetch this repo on their own. Unfree apps are listed here but only redistr
 cached: Plex is fetched from the vendor and built on the box; Steam (`unfreeRedistributable`) is
 the one explicit exception (`cache = true`).
 
-License: GPL-3.0-only, except the vendor terms in `apps/terms/`, which belong to their vendors (see `apps/terms/NOTICE`).
+License: GPL-3.0-only, except the vendor terms in `apps/terms/`, which belong to their vendors (see `apps/terms/NOTICE`), and the upstream READMEs in `apps/readme/`, which keep their projects' licences (see `apps/readme/NOTICE`).
 
 ## Layout
 
 ```
 apps/<id>.nix              one entry per app or service (format 3, below)
 apps/terms/<id>-<version>.txt   full vendor terms, plain text, referenced by entries
+apps/readme/<id>.md        upstream READMEs, Markdown, referenced by entries
 lib/default.nix            the format: validator, normalizer, index generator (needs only lib)
 schema/index.schema.json   JSON Schema of the generated Store index
 check-urls.sh               online URL check behind `nix run .#check-icon-urls`
@@ -29,7 +30,7 @@ Flake outputs:
 |---|---|
 | `catalog` | `{ <id> = entry; }`, validated and normalized. Evaluating it throws with every problem if any entry is invalid |
 | `catalogIndex` | The Store index as a Nix value |
-| `packages.x86_64-linux.index` | `$out/share/hinteros/catalog.json` (the index) and `$out/share/hinteros/terms/*.txt` (the vendor terms it references, so the launcher shows them offline) |
+| `packages.x86_64-linux.index` | `$out/share/hinteros/catalog.json` (the index) `$out/share/hinteros/terms/*.txt` and `$out/share/hinteros/readme/*.md` (the vendor terms and READMEs it references, so the launcher shows them offline) |
 | `lib` | `load`, `validate`, `checkEntry`, `normalize`, `mkIndex`, the enums, `cacheableUnfree` (the unfree package names of entries with `cache = true`, for the cache job and the `forbidUnfree` exception list), and `appsOnly`, `services`, `featuresOf`, `starterDefaults`, `catalogIds` (see Library outputs) |
 | `apps.x86_64-linux.check-icon-urls` | Online check of `iconUrl`, `siteUrl` and `terms.url` (see Icons) |
 | `checks` | formatting/lint, validator tests, index against its schema (v3), package and licence eval, NixOS eval of every box feature and service |
@@ -72,6 +73,7 @@ M10); it is never in the Store. See [How to add an app](#adding-an-app-or-a-serv
 | `onIso` | no (apps) | Ships on the ISO, so an offline install can pick it (YouTube, Jellyfin, Firefox). Free apps only; its `depends` must be `onIso` too |
 | `cache` | no | Default `false`. `true` only for an unfree entry whose unfree packages are all `unfreeRedistributable` in nixpkgs: CI builds it, the binary cache serves it and the install is a download like a free app. Checked against nixpkgs `meta.license` by `tests/packages.nix`. Free entries are always cached and must not set it. Names go into `lib.cacheableUnfree` |
 | `terms` | unfree entries | The vendor's full terms, shown in full in the install dialog before the user accepts: `{ title; version; url; retrieved; text; }`. `version` is the vendor's version or revision date (the box records which version each profile accepted), `retrieved` the date the text was copied (`YYYY-MM-DD`), `text` a plain UTF-8 file `./terms/<id>-<version>.txt`. The index carries title, version, url, retrieved and the file name `terms/<id>-<version>.txt`; the index package installs the files next to `catalog.json` |
+| `readme` | no | The upstream project's README, shown on the app's Store page: `{ url; retrieved; text; }`. `url` is the file at the exact upstream commit (`https://github.com/<repo>/blob/<sha>/README.md`), `retrieved` the date it was copied, `text` the file `./readme/<id>.md`, unmodified, at most 64 KiB. Apps with the same upstream (the OpenRA mods) each have their own copy. The index carries url, retrieved and `readme/<id>.md`; the index package installs the files next to `catalog.json`. See "Upstream READMEs" |
 | `dataPaths` | no | Paths relative to a profile's home that hold the app's data. "Remove and delete data" deletes them in the removing profile's home only, after a second confirmation. No leading `/` or `~`, no `.`, `..` or empty components, no wildcards. A kiosk (web) app must list its Firefox profile, `.local/share/hinteros/firefox/<id>`. Deleting Steam's `.local/share/Steam` also removes installed games. Services keep their data in `/var/lib` and list none |
 | `permissions` | no (apps) | What the app may use in its sandbox, `{ <name> = "required" \| "optional"; }`, default `{ }`. Names: `gamepad` (`/dev/input`, device ACLs limit it to controllers, and `/run/udev`; needed by every app with `input = "gamepad"` or no `input`, the daemon's default), `mic` (a pulse socket that may record), `downloads` (the profile's `~/Downloads`, read-write), `lan` (the local network: devices at home and this box's own services; without it the app reaches only DNS and the internet). The install sheet shows them all switched on; the user can switch optional ones off (then and on the app's page). The validator refuses other names and values. In the index |
 | `sandbox` | no (apps) | Default `true`: the session daemon starts the app in its bwrap sandbox, with its own home `.local/share/hinteros/sandbox/<id>` (added to `dataPaths` automatically). `false` only for Steam, which runs its own sandbox; such an app has no `permissions`. In the index |
@@ -215,6 +217,18 @@ announces a change:
    description if so.
 5. `nix flake check`. A new `version` makes boxes ask for acceptance again on the next install of
    that app (the box records the accepted version).
+
+## Upstream READMEs
+
+The Store page of an app shows its upstream README (Markdown; images, HTML and links are shown
+as plain text or left out). Only open-source apps with a README in their repository have one.
+To add or refresh one:
+
+1. Take the README of the commit the packaged release comes from, or of the default branch.
+2. Save it unmodified as `apps/readme/<id>.md`. Never edit or shorten the upstream text.
+3. Set `readme.url` to the file at that commit and `readme.retrieved` to today.
+
+Refresh them with the vendor terms, at least every release.
 
 ## Development
 

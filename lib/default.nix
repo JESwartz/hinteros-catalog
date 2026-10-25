@@ -272,6 +272,11 @@ let
       check = either isNull isAttrs;
       what = "null or an attrset { title; version; url; retrieved; text; }";
     };
+    readme = {
+      default = null;
+      check = either isNull isAttrs;
+      what = "null or an attrset { url; retrieved; text; }";
+    };
     dataPaths = {
       default = [ ];
       check = listOf isHomePath;
@@ -445,6 +450,35 @@ let
               ) "terms.text: the file must be named ${file} (<id>-<version>.txt)"
               ++ lib.optional (!builtins.pathExists tm.text) "terms.text: file does not exist"
           );
+
+      rm = full.readme;
+      readmeProblems = lib.optionals (rm != null) (
+        let
+          unknownKeys = lib.subtractLists [
+            "url"
+            "retrieved"
+            "text"
+          ] (attrNames rm);
+        in
+        lib.optional (
+          unknownKeys != [ ]
+        ) "readme: unknown field(s) ${lib.concatStringsSep ", " unknownKeys}"
+        ++ lib.optional (
+          !isHttps (rm.url or null)
+        ) "readme.url: an https URL (where the text was copied from)"
+        ++ lib.optional (
+          !(
+            isString (rm.retrieved or null) && builtins.match "[0-9]{4}-[0-9]{2}-[0-9]{2}" rm.retrieved != null
+          )
+        ) "readme.retrieved: the retrieval date, YYYY-MM-DD"
+        ++ (
+          if !isPath (rm.text or null) then
+            [ "readme.text: a path to the Markdown file, ./readme/<id>.md" ]
+          else
+            lib.optional (baseNameOf rm.text != "${id}.md") "readme.text: the file must be named ${id}.md"
+            ++ lib.optional (!builtins.pathExists rm.text) "readme.text: file does not exist"
+        )
+      );
 
       ic = full.icon;
       iconProblems =
@@ -621,6 +655,7 @@ let
     ++ lib.optionals (missing == [ ] && invalid == [ ] && !tombstone) (
       licProblems
       ++ termsProblems
+      ++ readmeProblems
       ++ iconProblems
       ++ kindProblems
       ++ appProblems
@@ -834,6 +869,14 @@ let
                 retrieved
                 ;
               file = "terms/${baseNameOf e.terms.text}";
+            };
+        readme =
+          if e.readme == null then
+            null
+          else
+            {
+              inherit (e.readme) url retrieved;
+              file = "readme/${baseNameOf e.readme.text}";
             };
       };
 

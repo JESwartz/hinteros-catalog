@@ -17,6 +17,12 @@
   '';
   category = "games";
   homepage = "https://www.openra.net";
+  # The upstream README, unmodified (see README, "Upstream READMEs").
+  readme = {
+    url = "https://github.com/OpenRA/OpenRA/blob/dbe674733305cd1ebe7bd03feed347b5c0da3c08/README.md";
+    retrieved = "2026-10-25";
+    text = ./readme/openra-ra.md;
+  };
   license = {
     free = true;
     redistributable = true;
