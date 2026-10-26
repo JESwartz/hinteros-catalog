@@ -3,5 +3,7 @@ reproduced unmodified so that a HinterOS box can show them on the app's Store pa
 
 They are NOT covered by this repository's GPL-3.0-only license. Each text remains under the
 license of its project's repository (jellyfin-desktop: GPL-2.0; moonlight-qt: GPL-3.0; OpenRA:
-GPL-3.0; VacuumTube: MIT; Firefox: MPL-2.0). The source URL (at the exact commit) and
-retrieval date of each file are recorded in its catalog entry (apps/<id>.nix).
+GPL-3.0; VacuumTube: MIT; Firefox: MPL-2.0; SuperTuxKart: GPL-3.0; Neverball: GPL-2.0; UZDoom:
+GPL-3.0; Shattered Pixel Dungeon: GPL-3.0; Modrinth: the licenses in its repository, the app
+GPL-3.0). The source URL (at the exact commit) and retrieval date of each file are recorded in
+its catalog entry (apps/<id>.nix).

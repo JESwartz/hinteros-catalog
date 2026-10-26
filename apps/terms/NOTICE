@@ -2,6 +2,7 @@ The files in this directory are vendors' terms of service, reproduced unmodified
 HinterOS box can show them in full before the user agrees to install the vendor's app.
 
 They are NOT covered by this repository's GPL-3.0-only license. Each text remains the property
-of its vendor (Valve Corporation for steam-*.txt, Plex, Inc. for plex-htpc-*.txt), is reproduced
-for that purpose only, and is replaced when the vendor publishes a new version. The source URL,
-version and retrieval date of each file are recorded in its catalog entry (apps/<id>.nix).
+of its vendor (Valve Corporation for steam-*.txt, Plex, Inc. for plex-*.txt, Rinth, Inc. for
+modrinth-*.txt), is reproduced for that purpose only, and is replaced when the vendor publishes
+a new version. The source URL, version and retrieval date of each file are recorded in its
+catalog entry (apps/<id>.nix).

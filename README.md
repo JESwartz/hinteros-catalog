@@ -7,8 +7,8 @@ service (box-wide software) that the admin can turn on.
 The catalog reaches boxes as a flake input of the system repo, locked per channel release, so
 catalog changes ship with system updates and are covered by the same signed-commit check. Boxes
 never fetch this repo on their own. Unfree apps are listed here but only redistributable ones are ever
-cached: Plex is fetched from the vendor and built on the box; Steam (`unfreeRedistributable`) is
-the one explicit exception (`cache = true`).
+cached: Plex is fetched from the vendor and built on the box; Steam and Modrinth
+(`unfreeRedistributable`) are the explicit exceptions (`cache = true`).
 
 License: GPL-3.0-only, except the vendor terms in `apps/terms/`, which belong to their vendors (see `apps/terms/NOTICE`), and the upstream READMEs in `apps/readme/`, which keep their projects' licences (see `apps/readme/NOTICE`).
 

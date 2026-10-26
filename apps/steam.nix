@@ -1,4 +1,4 @@
-# Steam: unfree (unfreeRedistributable), native. The one unfree app that is cached: with
+# Steam: unfree (unfreeRedistributable), native. An unfree app that is cached (as Modrinth): with
 # `cache = true` CI builds it and the binary cache serves it, so installing is a download like
 # a free app. Never on the ISO.
 {
