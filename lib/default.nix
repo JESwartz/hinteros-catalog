@@ -497,6 +497,9 @@ let
         ) "icon.desktopId: a .desktop file name without the extension"
         ++ lib.optional (ic ? siteUrl && !isHttps ic.siteUrl) "icon.siteUrl: an https URL"
         ++ lib.optional (
+          (e.icon or { }) ? siteUrl && e.icon.siteUrl == null && full.type != "native"
+        ) "icon.siteUrl: null (no icon discovery) only for native apps"
+        ++ lib.optional (
           ic ? iconUrl && !(isHttps ic.iconUrl && stringLength ic.iconUrl <= 500)
         ) "icon.iconUrl: an https URL of the vendor's own public logo (at most 500 characters)"
         ++ lib.optional (
@@ -739,9 +742,11 @@ let
       # The ISO and the binary cache never contain unfree software, except entries that opt in with
       # `cache` (checked to be unfreeRedistributable): everything else unfree is built on the box.
       buildsOnDevice = !(lic.free or true) && !withDefaults.cache;
-      icon =
+      # `siteUrl = null`: no discovery (a native app whose site gives no icon of its own).
+      icon = lib.filterAttrs (_: v: v != null) (
         lib.optionalAttrs (withDefaults.status != "removed") { siteUrl = withDefaults.homepage; }
-        // withDefaults.icon;
+        // withDefaults.icon
+      );
       packages =
         if withDefaults.packages != null then
           withDefaults.packages

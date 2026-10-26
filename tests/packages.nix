@@ -4,7 +4,7 @@
 #   - an unfree entry fails to evaluate with nothing allowed (so the declaration is needed);
 #   - license.free / license.redistributable equal what nixpkgs says about the packages;
 #   - cache = true only if every unfree package of the entry has nixpkgs' unfreeRedistributable
-#     licence.
+#     licence (with free licences beside it at most: Modrinth is GPL-3.0 and unfreeRedistributable).
 # Unfree packages are only evaluated, never built: anything built on the runner would end up
 # in the store Harmonia serves. Run under pure evaluation (nix flake check): impure evaluation
 # would let NIXPKGS_ALLOW_UNFREE or a user nixpkgs config hide a missing declaration.
@@ -35,7 +35,8 @@ let
 
   licenses = p: lib.toList (p.meta.license or [ ]);
   isFree = p: lib.all (l: l.free or true) (licenses p);
-  isUnfreeRedistributable = p: lib.all (l: l == lib.licenses.unfreeRedistributable) (licenses p);
+  isUnfreeRedistributable =
+    p: lib.all (l: l == lib.licenses.unfreeRedistributable || (l.free or true)) (licenses p);
   isRedistributable = p: lib.all (l: l.redistributable or (l.free or true)) (licenses p);
 
   checkEntry =

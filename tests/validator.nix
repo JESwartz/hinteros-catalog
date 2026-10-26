@@ -256,6 +256,37 @@ let
         true
       ];
     };
+    testSiteUrlNullNative = {
+      expr = {
+        problems = problems "example" (
+          good
+          // {
+            icon = good.icon // {
+              siteUrl = null;
+            };
+          }
+        );
+        index =
+          (lib.head
+            (catalogLib.mkIndex {
+              example = catalogLib.normalize "example" (
+                good
+                // {
+                  icon = good.icon // {
+                    siteUrl = null;
+                  };
+                }
+              );
+            }).apps
+          ).icon;
+      };
+      expected = {
+        problems = [ ];
+        index = {
+          desktopId = "org.example.Example";
+        };
+      };
+    };
     testReadmePasses = {
       expr = problems "example" (good // { inherit readme; });
       expected = [ ];
@@ -349,6 +380,20 @@ let
         }
       );
       expected = [ ];
+    };
+    testSiteUrlNullWebRefused = {
+      expr = refuses "icon.siteUrl: null (no icon discovery) only for native apps" (
+        good
+        // {
+          icon.siteUrl = null;
+          app = _: {
+            kiosk.url = "https://example.org";
+            input = "keyboard";
+          };
+          dataPaths = [ ".local/share/hinteros/firefox/example" ];
+        }
+      );
+      expected = true;
     };
     testKioskAboutHome = {
       expr = refuses "app.kiosk.url" (
