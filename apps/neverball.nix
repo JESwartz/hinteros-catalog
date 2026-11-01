@@ -19,8 +19,7 @@
     text = ./readme/neverball.md;
   };
   license = {
-    free = true;
-    redistributable = true;
+    unfree = false;
   };
   # Both games and their levels (about 250 MiB more than the libraries a box already has): an
   # estimate, not measured on a box. Neverputt shares the package.

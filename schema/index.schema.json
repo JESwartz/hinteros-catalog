@@ -2,13 +2,13 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://justsomeshed.com/JSwartz/HinterOS/hinteros-catalog/schema/index.schema.json",
   "title": "HinterOS catalog index",
-  "description": "Generated from apps/*.nix by lib.mkIndex (indexVersion 3). Read by the session daemon and the launcher's Store UI. Receivers ignore unknown fields and treat unknown enum values as documented.",
+  "description": "Generated from apps/*.nix by lib.mkIndex (indexVersion 4). Read by the session daemon and the launcher's Store UI. Receivers ignore unknown fields and treat unknown enum values as documented.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["indexVersion", "apps"],
+  "required": ["indexVersion", "entries"],
   "properties": {
-    "indexVersion": { "const": 3 },
-    "apps": {
+    "indexVersion": { "const": 4 },
+    "entries": {
       "type": "array",
       "items": {
         "oneOf": [
@@ -34,9 +34,9 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "id", "kind", "type", "name", "summary", "description", "category", "homepage", "sizeMiB",
-        "icon", "box", "starter", "onIso", "depends", "needsServices", "conflicts", "dataPaths", "terms", "readme", "status",
-        "statusReason", "buildsOnDevice", "free", "redistributable", "cache"
+        "id", "kind", "name", "summary", "description", "category", "homepage", "sizeMiB",
+        "icon", "boxFeatures", "starter", "onIso", "depends", "needsServices", "conflicts", "dataPaths", "terms", "readme", "status",
+        "statusReason", "unfree", "delivery"
       ],
       "properties": {
         "id": { "$ref": "#/$defs/Id" },
@@ -52,10 +52,6 @@
           "description": "Entry kind. Apps are installed per profile and shown in the Store; services are box-wide, admin only, and shown in the Server section. Unknown values: ignore the entry.",
           "enum": ["app", "service"]
         },
-        "type": {
-          "description": "web and native as in apps.list; service for kind = service. Unknown values: native.",
-          "enum": ["native", "web", "service"]
-        },
         "sizeMiB": { "type": "integer", "minimum": 1, "description": "Approximate download plus disk use" },
         "icon": {
           "type": "object",
@@ -66,11 +62,11 @@
             "desktopId": { "type": "string", "pattern": "^[A-Za-z0-9._-]+$" },
             "siteUrl": { "$ref": "#/$defs/Https" },
             "iconUrl": { "$ref": "#/$defs/Https", "description": "The vendor's own public logo; the daemon downloads and caches it at runtime (https, at most 1 MiB). Optional." },
-            "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$", "description": "SHA-256 of the iconUrl file (hex). Always there with iconUrl; older indexes have none. The daemon refuses a download with another hash." },
+            "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$", "description": "SHA-256 of the iconUrl file (hex). Required with iconUrl. The daemon refuses a download with another hash." },
             "firefoxProfile": { "type": "boolean" }
           }
         },
-        "box": {
+        "boxFeatures": {
           "type": "array",
           "description": "Box features the app needs; the system turns them on box-wide when any profile has the app. Always empty for services",
           "items": { "enum": ["graphics32", "steam-devices"] }
@@ -131,13 +127,11 @@
         },
         "status": { "enum": ["available", "retired"] },
         "statusReason": { "type": ["string", "null"], "maxLength": 200 },
-        "buildsOnDevice": {
-          "type": "boolean",
-          "description": "Unfree and not cached: fetched from the vendor and built on the box during install. Unfree apps with cache = true (Steam) come from the binary cache"
+        "unfree": { "type": "boolean", "description": "The app is not free software. Vendor terms are required; never on the ISO. Missing: true" },
+        "delivery": {
+          "description": "How the app reaches the box. download: from the binary cache (free apps, and unfree apps that may be redistributed). build: fetched from the vendor and built on the box during install. Unknown values: build",
+          "enum": ["download", "build"]
         },
-        "free": { "type": "boolean" },
-        "redistributable": { "type": "boolean" },
-        "cache": { "type": "boolean", "description": "Unfree and cached (Steam): a download like a free entry" },
         "permissions": {
           "type": "object",
           "description": "Sandbox permissions the app declares. required: always granted; optional: the profile user can switch it off. Unknown names: ignore. Missing: none",
@@ -164,7 +158,7 @@
         },
         "setup": {
           "description": "Services: the setup flow the Server section shows. Unknown values: show only on/off. null for apps and services without setup. Missing: null",
-          "enum": [null, "jellyfin", "plex", "tailscale", "cloudflare"]
+          "enum": [null, "jellyfin-server", "plex-media-server", "tailscale", "cloudflare-tunnel"]
         },
         "stateDirs": {
           "type": "array",

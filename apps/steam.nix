@@ -1,5 +1,5 @@
 # Steam: unfree (unfreeRedistributable), native. An unfree app that is cached (as Modrinth): with
-# `cache = true` CI builds it and the binary cache serves it, so installing is a download like
+# `delivery = "download"` CI builds it and the binary cache serves it, so installing is a download like
 # a free app. Never on the ISO.
 {
   format = 3;
@@ -14,8 +14,7 @@
   category = "games";
   homepage = "https://store.steampowered.com";
   license = {
-    free = false;
-    redistributable = true;
+    unfree = true;
     unfreePackages = [
       "steam"
       "steam-unwrapped"
@@ -30,12 +29,12 @@
     iconUrl = "https://store.steampowered.com/public/shared/images/responsive/share_steam_logo.png";
     sha256 = "57df95cc7a45db8c9e62306aaa1be8983a62c5b2260cee830a1329fe803172f1";
   };
-  box = [
+  boxFeatures = [
     "graphics32"
     "steam-devices"
   ];
   starter = "offered";
-  cache = true; # unfreeRedistributable (checked against nixpkgs by tests/packages.nix)
+  delivery = "download"; # unfreeRedistributable (checked against nixpkgs by tests/packages.nix)
 
   # Refresh when Valve revises the agreement (see README, "Refreshing vendor terms").
   terms = {
@@ -59,7 +58,7 @@
 
   # The tile is the daemon's built-in `steam` entry (Big Picture, games.list), so the app is
   # not listed as a tile of its own. `box.steam` is pkgs.steam with this box's graphics packages;
-  # the `box` features above turn on 32-bit graphics and the controller udev rules box-wide.
+  # the `boxFeatures` above turn on 32-bit graphics and the controller udev rules box-wide.
   app = { box, ... }: {
     package = box.steam;
     listed = false;

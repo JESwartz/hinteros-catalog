@@ -18,8 +18,7 @@
     text = ./readme/neverputt.md;
   };
   license = {
-    free = true;
-    redistributable = true;
+    unfree = false;
   };
   # Shares the neverball package (see neverball.nix).
   sizeMiB = 250;

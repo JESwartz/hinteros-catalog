@@ -41,7 +41,7 @@ while IFS=$'\t' read -r app field url sha; do
   printf '%-6s %-14s %-9s %-5s %-24s %8s  %s\n' "$res" "$app" "$field" "$http" "${ctype:0:24}" "$size" "$url"
   [ -z "$why" ] || printf '       -> %s\n' "$why"
   rm -f "$tmp/body"
-done < <(jq -r '.apps[] | select(.status != "removed") | . as $a |
+done < <(jq -r '.entries[] | select(.status != "removed") | . as $a |
   ( (.icon.iconUrl // empty) | [$a.id, "iconUrl", ., ($a.icon.sha256 // "")] ),
   ( if .icon.siteUrl and ((.icon.firefoxProfile // false) | not) then [$a.id, "siteUrl", .icon.siteUrl] else empty end ),
   ( (.terms.url // empty) | [$a.id, "terms.url", .] ) | @tsv' "$index")

@@ -15,8 +15,7 @@
   category = "video";
   homepage = "https://www.plex.tv";
   license = {
-    free = false;
-    redistributable = false;
+    unfree = true;
     unfreePackages = [ "plex-htpc" ];
   };
   sizeMiB = 300;
@@ -28,7 +27,7 @@
     sha256 = "78072fd57aacff1f73dee6432fb8d7f0360f300b4545422fb767cce638c4e7d3";
   };
   # Never cached: Plex HTPC is not redistributable.
-  cache = false;
+  delivery = "build";
   starter = "offered";
 
   # Refresh when Plex revises its terms (see README, "Refreshing vendor terms").

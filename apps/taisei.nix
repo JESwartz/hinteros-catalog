@@ -12,8 +12,7 @@
   category = "games";
   homepage = "https://taisei-project.org";
   license = {
-    free = true;
-    redistributable = true;
+    unfree = false;
   };
   # About 240 MiB more than the libraries a box already has: an estimate, not measured on a box.
   sizeMiB = 240;

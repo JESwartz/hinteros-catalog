@@ -20,11 +20,10 @@ let
     stringLength
     ;
 
-  # Format 3 added `kind` (app/service), `box` (replacing `requires`), `service` (replacing
-  # `nixos`, services only) and `starter` (replacing `installer`/`installerDefault`); no format
-  # 1 or 2 entry exists any more.
+  # Format 3: `kind` (app/service), `boxFeatures`, `service` (services only), `starter`,
+  # `license.unfree` and `delivery`. No other format exists.
   supportedFormats = [ 3 ];
-  indexVersion = 3;
+  indexVersion = 4;
 
   entryKinds = [
     "app" # installed per profile
@@ -33,6 +32,11 @@ let
   starters = [
     "offered" # listed in the installer's app step
     "ticked" # listed and pre-selected (needs onIso)
+  ];
+  # How the app reaches the box (`delivery`).
+  deliveries = [
+    "download" # from the binary cache, like a free app
+    "build" # unfree and not redistributable: built on the box from the vendor's download
   ];
   categories = [
     "games"
@@ -116,10 +120,10 @@ let
   # Setup flows the daemon and launcher show for a service (`setup`). A new one is a daemon and
   # launcher change.
   setupKinds = [
-    "jellyfin" # first run done by the system, libraries, one user per profile
-    "plex" # claim code from plex.tv/claim
+    "jellyfin-server" # first run done by the system, libraries, one user per profile
+    "plex-media-server" # claim code from plex.tv/claim
     "tailscale" # sign in by QR
-    "cloudflare" # Zero Trust tunnel token
+    "cloudflare-tunnel" # Zero Trust tunnel token
   ];
   # Who may reach a service port (`ports.*.from`).
   portSources = [
@@ -210,7 +214,7 @@ let
     license = {
       required = true;
       check = isAttrs;
-      what = "an attrset { free; redistributable; unfreePackages; }";
+      what = "an attrset { unfree; unfreePackages; }";
     };
     sizeMiB = {
       required = true;
@@ -232,7 +236,7 @@ let
       check = either isNull (isText 200);
       what = "null or a single-line string of at most 200 characters";
     };
-    box = {
+    boxFeatures = {
       default = [ ];
       check = listOf (oneOf features);
       what = "a list of box features: ${lib.concatStringsSep ", " features}";
@@ -262,10 +266,11 @@ let
       check = isBool;
       what = "a bool";
     };
-    cache = {
-      default = false;
-      check = isBool;
-      what = "a bool";
+    # null: normalize picks "build" for an unfree entry, "download" for a free one.
+    delivery = {
+      default = null;
+      check = either isNull (oneOf deliveries);
+      what = "null or one of ${lib.concatStringsSep ", " deliveries}";
     };
     terms = {
       default = null;
@@ -390,33 +395,28 @@ let
       licProblems =
         let
           unknownKeys = lib.subtractLists [
-            "free"
-            "redistributable"
+            "unfree"
             "unfreePackages"
           ] (attrNames lic);
         in
         lib.optional (
           unknownKeys != [ ]
         ) "license: unknown field(s) ${lib.concatStringsSep ", " unknownKeys}"
-        ++ lib.optional (!isBool (lic.free or null)) "license.free: must be a bool"
-        ++ lib.optional (!isBool (lic.redistributable or null)) "license.redistributable: must be a bool"
+        ++ lib.optional (!isBool (lic.unfree or null)) "license.unfree: must be a bool"
         ++ lib.optional (
           !(listOf (isText 64) (lic.unfreePackages or [ ]))
         ) "license.unfreePackages: must be a list of package names"
         ++ lib.optional (
-          (lic.free or false) && (lic.unfreePackages or [ ]) != [ ]
+          !(lic.unfree or true) && (lic.unfreePackages or [ ]) != [ ]
         ) "license: a free app has no unfreePackages"
         ++ lib.optional (
-          !(lic.free or true) && (lic.unfreePackages or [ ]) == [ ]
-        ) "license: an unfree app must list its unfreePackages (names for the allowlist)"
-        ++ lib.optional (
-          (lic.free or false) && !(lic.redistributable or true)
-        ) "license: free implies redistributable";
+          (lic.unfree or false) && (lic.unfreePackages or [ ]) == [ ]
+        ) "license: an unfree app must list its unfreePackages (names for the allowlist)";
 
       tm = full.terms;
       termsProblems =
         if tm == null then
-          lib.optional (!lic.free) "terms: required for unfree apps (the vendor's full terms text)"
+          lib.optional lic.unfree "terms: required for unfree apps (the vendor's full terms text)"
         else
           let
             unknownKeys = lib.subtractLists [
@@ -602,7 +602,7 @@ let
         if isService then
           lib.optional (full.service == null) "service: required for kind = \"service\""
           ++ lib.optional (full.app != null) "app: only for kind = \"app\" (a service has `service`)"
-          ++ lib.optional (e ? box) "box: only for apps (a service is box-wide already)"
+          ++ lib.optional (e ? boxFeatures) "boxFeatures: only for apps (a service is box-wide already)"
           ++ lib.optional (e ? starter) "starter: only for apps"
           ++ lib.optional (e ? onIso) "onIso: only for apps"
           ++ lib.optional (e ? needsServices) "needsServices: only for apps (a service cannot need a service)"
@@ -633,7 +633,7 @@ let
         ++ lib.optional (elem id full.depends) "depends: an entry cannot depend on itself"
         ++ lib.optional (elem id full.conflicts) "conflicts: an entry cannot conflict with itself"
         ++ lib.optional (
-          full.onIso && !lic.free
+          full.onIso && lic.unfree
         ) "onIso: only free apps (the ISO never contains unfree software)"
         ++ lib.optional (
           full.starter == "ticked" && !full.onIso
@@ -642,11 +642,8 @@ let
           (full.starter != null || full.onIso) && full.status != "available"
         ) "starter/onIso: only available apps"
         ++ lib.optional (
-          full.cache && lic.free
-        ) "cache: only for unfree entries (free ones are always in the binary cache)"
-        ++ lib.optional (
-          full.cache && !lic.redistributable
-        ) "cache: only unfreeRedistributable entries may be cached (license.redistributable = true)"
+          e ? delivery && !lic.unfree
+        ) "delivery: only for unfree entries (free ones are always in the binary cache)"
         ++ lib.optional (
           full.type == "web" && !elem ".local/share/hinteros/firefox/${id}" full.dataPaths
         ) "dataPaths: a kiosk (web) app must list its Firefox profile, .local/share/hinteros/firefox/${id}";
@@ -711,8 +708,7 @@ let
         lib.mapAttrs (_: f: f.default) (lib.filterAttrs (_: f: !(f.required or false)) fields)
         // {
           license = {
-            free = true;
-            redistributable = true;
+            unfree = false;
             unfreePackages = [ ];
           };
           icon = { };
@@ -731,7 +727,7 @@ let
       license = lic;
       # A sandboxed app's whole home is app data: "delete data" removes it too.
       dataPaths = lib.unique (withDefaults.dataPaths ++ lib.optional sandbox (sandboxHome id));
-      # `kind` is the entry kind; `type` what the entry is: web/native apps, or a service.
+      # For the validator only, not in the index: web/native apps, or a service.
       type =
         if withDefaults.kind == "service" then
           "service"
@@ -739,9 +735,16 @@ let
           "web"
         else
           "native";
-      # The ISO and the binary cache never contain unfree software, except entries that opt in with
-      # `cache` (checked to be unfreeRedistributable): everything else unfree is built on the box.
-      buildsOnDevice = !(lic.free or true) && !withDefaults.cache;
+      # The ISO and the binary cache never contain unfree software, except entries with
+      # `delivery = "download"` (tests/packages.nix checks them against nixpkgs): everything else
+      # unfree is built on the box.
+      delivery =
+        if withDefaults.delivery != null then
+          withDefaults.delivery
+        else if lic.unfree or false then
+          "build"
+        else
+          "download";
       # `siteUrl = null`: no discovery (a native app whose site gives no icon of its own).
       icon = lib.filterAttrs (_: v: v != null) (
         lib.optionalAttrs (withDefaults.status != "removed") { siteUrl = withDefaults.homepage; }
@@ -835,14 +838,13 @@ let
         inherit (e)
           id
           kind
-          type
           name
           summary
           category
           homepage
           sizeMiB
           icon
-          box
+          boxFeatures
           starter
           onIso
           depends
@@ -851,15 +853,14 @@ let
           dataPaths
           status
           statusReason
-          buildsOnDevice
-          cache
+          delivery
           permissions
           sandbox
           ports
           setup
           stateDirs
           ;
-        inherit (e.license) free redistributable;
+        inherit (e.license) unfree;
         description = reflow e.description;
         # `file` is relative to catalog.json (the index package installs it next to it).
         terms =
@@ -886,13 +887,13 @@ let
       };
 
   # Unfree package names the system repo's `forbidUnfree` / cache job may allow: the union of
-  # unfreePackages of every available entry with `cache = true`.
+  # unfreePackages of every unfree entry with `delivery = "download"` that is not removed.
   cacheableUnfreeOf =
     catalog:
     lib.unique (
       lib.sort lib.lessThan (
         lib.concatMap (e: e.license.unfreePackages) (
-          lib.filter (e: e.cache && e.status != "removed") (lib.attrValues catalog)
+          lib.filter (e: e.delivery == "download" && e.status != "removed") (lib.attrValues catalog)
         )
       )
     );
@@ -907,7 +908,9 @@ let
     catalog: ids:
     lib.sort lib.lessThan (
       lib.unique (
-        lib.concatMap (id: (catalog.${id} or (throw "hinteros-catalog: unknown entry ${id}")).box) ids
+        lib.concatMap (
+          id: (catalog.${id} or (throw "hinteros-catalog: unknown entry ${id}")).boxFeatures
+        ) ids
       )
     );
 
@@ -954,7 +957,7 @@ let
 
   mkIndex = catalog: {
     inherit indexVersion;
-    apps = map indexEntry (lib.sort (a: b: a.id < b.id) (lib.attrValues catalog));
+    entries = map indexEntry (lib.sort (a: b: a.id < b.id) (lib.attrValues catalog));
   };
 in
 {
@@ -963,6 +966,7 @@ in
     indexVersion
     entryKinds
     starters
+    deliveries
     categories
     statuses
     features

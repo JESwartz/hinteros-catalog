@@ -31,7 +31,7 @@
       # Entry format implementation (validator, normalizer, index), pure: needs only `lib`.
       lib = catalogLib // {
         # Unfree package names allowed in the binary cache and the ISO build despite
-        # `forbidUnfree`: entries with `cache = true` (nixpkgs-checked unfreeRedistributable).
+        # `forbidUnfree`: unfree entries with `delivery = "download"` (nixpkgs-checked unfreeRedistributable).
         cacheableUnfree = catalogLib.cacheableUnfreeOf self.catalog;
         # Only the apps / only the services of the catalog.
         appsOnly = catalogLib.appsOnlyOf self.catalog;
@@ -102,12 +102,12 @@
                 ${self.packages.${system}.index}/share/hinteros/catalog.json
               # Every terms file the index references exists, is non-empty and is not a TODO stub.
               idx=${self.packages.${system}.index}/share/hinteros
-              for f in $(jq -r '.apps[].terms.file // empty' $idx/catalog.json); do
+              for f in $(jq -r '.entries[].terms.file // empty' $idx/catalog.json); do
                 test -s "$idx/$f"
                 if head -c 200 "$idx/$f" | grep -q TODO; then echo "$f is a TODO stub" >&2; exit 1; fi
               done
               # Every README the index references exists, is non-empty and at most 64 KiB.
-              for f in $(jq -r '.apps[].readme.file // empty' $idx/catalog.json); do
+              for f in $(jq -r '.entries[].readme.file // empty' $idx/catalog.json); do
                 test -s "$idx/$f"
                 if [ "$(stat -c %s "$idx/$f")" -gt 65536 ]; then echo "$f is over 64 KiB" >&2; exit 1; fi
               done

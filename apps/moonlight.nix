@@ -16,8 +16,7 @@
     text = ./readme/moonlight.md;
   };
   license = {
-    free = true;
-    redistributable = true;
+    unfree = false;
   };
   sizeMiB = 150;
   icon = {

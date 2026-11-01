@@ -2,8 +2,9 @@
 # declaration matches nixpkgs' meta:
 #   - with exactly the entry's unfreePackages allowed, its packages evaluate;
 #   - an unfree entry fails to evaluate with nothing allowed (so the declaration is needed);
-#   - license.free / license.redistributable equal what nixpkgs says about the packages;
-#   - cache = true only if every unfree package of the entry has nixpkgs' unfreeRedistributable
+#   - license.unfree equals what nixpkgs says about the packages;
+#   - delivery = "download" only if every package is redistributable in nixpkgs;
+#   - delivery = "download" only if every unfree package of the entry has nixpkgs' unfreeRedistributable
 #     licence (with free licences beside it at most: Modrinth is GPL-3.0 and unfreeRedistributable).
 # Unfree packages are only evaluated, never built: anything built on the runner would end up
 # in the store Harmonia serves. Run under pure evaluation (nix flake check): impure evaluation
@@ -42,26 +43,28 @@ let
   checkEntry =
     id: e:
     let
-      own = if e.license.free then pkgsFree else pkgsAllowing e.license.unfreePackages;
+      own = if e.license.unfree then pkgsAllowing e.license.unfreePackages else pkgsFree;
       ok = evaluates own e;
       ps = if ok then e.packages own else [ ];
     in
     lib.optional (!ok)
       "${id}: packages do not evaluate with unfreePackages ${builtins.toJSON e.license.unfreePackages} allowed"
     ++ lib.optional (
-      !e.license.free && evaluates pkgsFree e
+      e.license.unfree && evaluates pkgsFree e
     ) "${id}: declared unfree, but its packages evaluate with no unfree package allowed"
     ++
-      lib.optional (ok && ps != [ ] && lib.all isFree ps != e.license.free)
-        "${id}: license.free = ${lib.boolToString e.license.free}, but nixpkgs says ${lib.boolToString (lib.all isFree ps)}"
-    ++ lib.optionals (ok && e.cache) (
-      map (p: "${id}: cache = true, but ${lib.getName p} is not unfreeRedistributable in nixpkgs") (
-        lib.filter (p: !isFree p && !isUnfreeRedistributable p) ps
-      )
+      lib.optional (ok && ps != [ ] && lib.all isFree ps == e.license.unfree)
+        "${id}: license.unfree = ${lib.boolToString e.license.unfree}, but nixpkgs says ${
+          lib.boolToString (!lib.all isFree ps)
+        }"
+    ++ lib.optionals (ok && e.delivery == "download") (
+      map (
+        p: "${id}: delivery = download, but ${lib.getName p} is not unfreeRedistributable in nixpkgs"
+      ) (lib.filter (p: !isFree p && !isUnfreeRedistributable p) ps)
     )
-    ++
-      lib.optional (ok && ps != [ ] && lib.all isRedistributable ps != e.license.redistributable)
-        "${id}: license.redistributable = ${lib.boolToString e.license.redistributable}, but nixpkgs says ${lib.boolToString (lib.all isRedistributable ps)}";
+    ++ lib.optional (
+      ok && e.delivery == "download" && !lib.all isRedistributable ps
+    ) "${id}: delivery = download, but nixpkgs says it is not redistributable";
 
   problems = lib.concatLists (
     lib.mapAttrsToList checkEntry (lib.filterAttrs (_: e: e.status != "removed") catalog)

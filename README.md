@@ -8,7 +8,7 @@ The catalog reaches boxes as a flake input of the system repo, locked per channe
 catalog changes ship with system updates and are covered by the same signed-commit check. Boxes
 never fetch this repo on their own. Unfree apps are listed here but only redistributable ones are ever
 cached: Plex is fetched from the vendor and built on the box; Steam and Modrinth
-(`unfreeRedistributable`) are the explicit exceptions (`cache = true`).
+(`unfreeRedistributable`) are the explicit exceptions (`delivery = "download"`).
 
 License: GPL-3.0-only, except the vendor terms in `apps/terms/`, which belong to their vendors (see `apps/terms/NOTICE`), and the upstream READMEs in `apps/readme/`, which keep their projects' licences (see `apps/readme/NOTICE`).
 
@@ -31,9 +31,9 @@ Flake outputs:
 | `catalog` | `{ <id> = entry; }`, validated and normalized. Evaluating it throws with every problem if any entry is invalid |
 | `catalogIndex` | The Store index as a Nix value |
 | `packages.x86_64-linux.index` | `$out/share/hinteros/catalog.json` (the index) `$out/share/hinteros/terms/*.txt` and `$out/share/hinteros/readme/*.md` (the vendor terms and READMEs it references, so the launcher shows them offline) |
-| `lib` | `load`, `validate`, `checkEntry`, `normalize`, `mkIndex`, the enums, `cacheableUnfree` (the unfree package names of entries with `cache = true`, for the cache job and the `forbidUnfree` exception list), and `appsOnly`, `services`, `featuresOf`, `starterDefaults`, `catalogIds` (see Library outputs) |
+| `lib` | `load`, `validate`, `checkEntry`, `normalize`, `mkIndex`, the enums, `cacheableUnfree` (the unfree package names of entries with `delivery = "download"`, for the cache job and the `forbidUnfree` exception list), and `appsOnly`, `services`, `featuresOf`, `starterDefaults`, `catalogIds` (see Library outputs) |
 | `apps.x86_64-linux.check-icon-urls` | Online check of `iconUrl`, `siteUrl` and `terms.url` (see Icons) |
-| `checks` | formatting/lint, validator tests, index against its schema (v3), package and licence eval, NixOS eval of every box feature and service |
+| `checks` | formatting/lint, validator tests, index against its schema (v4), package and licence eval, NixOS eval of every box feature and service |
 
 ## Entry format (format 3)
 
@@ -55,14 +55,14 @@ M10); it is never in the Store. See [How to add an app](#adding-an-app-or-a-serv
 | `description` | yes | ≤ 1000 characters. Wrap it freely: the index joins lines into paragraphs (a blank line separates paragraphs) |
 | `category` | yes | `games`, `video`, `music`, `photos`, `utilities` |
 | `homepage` | yes | https URL; also the default `icon.siteUrl` |
-| `license` | yes | `{ free; redistributable; unfreePackages ? [ ]; }`. `unfreePackages` are the `lib.getName` names that must be allowed; required for unfree entries, empty for free ones. Checked against nixpkgs' `meta.license` |
+| `license` | yes | `{ unfree; unfreePackages ? [ ]; }`. `unfreePackages` are the `lib.getName` names that must be allowed; required for unfree entries, empty for free ones. Checked against nixpkgs' `meta.license` |
 | `sizeMiB` | yes | Approximate download plus disk use, shown in the Store and used for the free-space check |
 | `icon` | yes | Where the session daemon finds the real icon at runtime (HinterOS ships no logos, see Icons): `desktopId` (the installed app's `.desktop` file; required for native apps), `iconUrl` (optional, https: the vendor's own public logo) with `sha256` (required with `iconUrl`: the hex SHA-256 of that file; the daemon refuses any other file), `siteUrl` (defaults to `homepage`; used while the app is not installed and for web apps; `null` turns discovery off for a native app whose site gives no icon of its own), `firefoxProfile = true` (web apps whose site refuses icon fetches: use the favicon the kiosk profile stored) |
 | `app` | apps | `{ pkgs, lib, box }: { … }`, called by the system repo's env builder. Returns `package`, `command`, `kiosk` (`url`, `userAgent`, `fullscreenOnly`), `input` (`gamepad`/`keyboard`), `backKey`, `order` and `listed` (`false`: no tile of its own, as Steam's built-in one). It takes exactly those three arguments: no `config`, an app depends on the box only through `box`. `box.firefoxKiosk` is the kiosk wrapper with its Firefox, `box.steam` is `pkgs.steam` with this box's graphics packages. The system repo sets `name` and the icon fields from metadata; an entry can never set a packaged `icon` or an unfree allowance beyond `license.unfreePackages` |
-| `box` | no (apps) | Box features the app needs, from a closed list: `graphics32` (32-bit graphics drivers and PipeWire ALSA) and `steam-devices` (controller udev rules). The system turns them on box-wide when any profile has the app. A new feature is a system-repo change (`box-features.nix`); the validator refuses unknown names. Services cannot set `box` |
-| `service` | services | A restricted NixOS module, a function of `pkgs`, `lib`, `config`, `options` or an attrset. Allowed top-level namespaces: `services`, `hardware` and `systemd.services.<own unit>` (a unit named after one of the module's own `services.<name>`, e.g. `systemd.services.tailscaled` for `services.tailscale`). Never `networking` or a module's own `openFirewall` (open ports with `ports`), `nixpkgs` (no overlays or config: packages are built exactly as in nixpkgs), `imports`, `options`, `users`, `environment` (nothing is installed for profiles), `boot`, `programs` or `hinteros`. Do not wrap the whole module in `mkIf`/`mkMerge`: the validator reads its top-level names. Services have no `app`, `box`, `starter` or `onIso` |
+| `boxFeatures` | no (apps) | Box features the app needs, from a closed list: `graphics32` (32-bit graphics drivers and PipeWire ALSA) and `steam-devices` (controller udev rules). The system turns them on box-wide when any profile has the app. A new feature is a system-repo change (`box-features.nix`); the validator refuses unknown names. Services cannot set `boxFeatures` |
+| `service` | services | A restricted NixOS module, a function of `pkgs`, `lib`, `config`, `options` or an attrset. Allowed top-level namespaces: `services`, `hardware` and `systemd.services.<own unit>` (a unit named after one of the module's own `services.<name>`, e.g. `systemd.services.tailscaled` for `services.tailscale`). Never `networking` or a module's own `openFirewall` (open ports with `ports`), `nixpkgs` (no overlays or config: packages are built exactly as in nixpkgs), `imports`, `options`, `users`, `environment` (nothing is installed for profiles), `boot`, `programs` or `hinteros`. Do not wrap the whole module in `mkIf`/`mkMerge`: the validator reads its top-level names. Services have no `app`, `boxFeatures`, `starter` or `onIso` |
 | `ports` | no (services) | Ports the system opens while the service is on: `[ { port; proto = "tcp" \| "udp"; from = "lan" \| "any"; } ]`. `lan` is the local networks (the system's list, as for SSH) and the `tailscale0` interface; `any` is every source, only for a server that does its own sign-in and remote access (Plex). Each port and proto once. In the index |
-| `setup` | no (services) | The Server section's setup flow: `jellyfin` (first run by the system, libraries, one user per profile), `plex` (claim code), `tailscale` (sign in by QR), `cloudflare` (Zero Trust tunnel token), or `null` (on and off only). A new flow is a daemon and launcher change. In the index |
+| `setup` | no (services) | The Server section's setup flow, named after the service id: `jellyfin-server` (first run by the system, libraries, one user per profile), `plex-media-server` (claim code), `tailscale` (sign in by QR), `cloudflare-tunnel` (Zero Trust tunnel token), or `null` (on and off only). A new flow is a daemon and launcher change. In the index |
 | `stateDirs` | no (services) | Directories below `/var/lib` that "Delete server data" removes when the service is turned off: letters, digits, `.`, `_`, `-` and `/`; no `.`, `..` or empty components. In the index |
 | `packages` | no | `pkgs: [ package ]`, the entry's top-level packages for licence checks, cache builds and size. Defaults to `app.package` (with `box` standing in as plain nixpkgs packages). Services set it themselves |
 | `status` | no | `available` (default), `retired` (hidden from the Store, keeps working where installed), `removed` (tombstone, see below) |
@@ -71,7 +71,7 @@ M10); it is never in the Store. See [How to add an app](#adding-an-app-or-a-serv
 | `starter` | no (apps) | `null` (default: Store only), `"offered"` (listed in the installer's app step) or `"ticked"` (listed and pre-selected; needs `onIso`). The installer's picks are the starter set, copied into every new profile and guest session. Offered: YouTube, Jellyfin, Firefox, Steam, VacuumTube, Plex; ticked: YouTube, Firefox. Offered apps that are not `onIso` (Steam, VacuumTube, Plex) are downloaded, so picking one needs a network connection |
 | `needsServices` | no (apps) | Ids of `kind = "service"` entries the app needs (e.g. `[ "jellyfin-server" ]`); the validator refuses unknown ids, apps, removed entries, and the field on a service. Never installed with the app: while a needed service is not installed the Store shows red text (it needs that server, the admin profile can install it in Server) and disables Install, and the privileged service refuses the install. An app's `depends` stays app-to-app. In the index; `servicesNeededBy catalog ids` returns the union |
 | `onIso` | no (apps) | Ships on the ISO, so an offline install can pick it (YouTube, Jellyfin, Firefox). Free apps only; its `depends` must be `onIso` too |
-| `cache` | no | Default `false`. `true` only for an unfree entry whose unfree packages are all `unfreeRedistributable` in nixpkgs (free licences beside it are fine): CI builds it, the binary cache serves it and the install is a download like a free app. Checked against nixpkgs `meta.license` by `tests/packages.nix`. Free entries are always cached and must not set it. Names go into `lib.cacheableUnfree` |
+| `delivery` | no (unfree entries) | `"build"` (the default for unfree entries): fetched from the vendor and built on the box during install. `"download"`: only for an unfree entry whose unfree packages are all `unfreeRedistributable` in nixpkgs (free licences beside it are fine): CI builds it, the binary cache serves it and the install is a download like a free app. Checked against nixpkgs `meta.license` by `tests/packages.nix`. Free entries are always cached and must not set it (their `delivery` is always `"download"`). Names of `"download"` entries go into `lib.cacheableUnfree` |
 | `terms` | unfree entries | The vendor's full terms, shown in full in the install dialog before the user accepts: `{ title; version; url; retrieved; text; }`. `version` is the vendor's version or revision date (the box records which version each profile accepted), `retrieved` the date the text was copied (`YYYY-MM-DD`), `text` a plain UTF-8 file `./terms/<id>-<version>.txt`. The index carries title, version, url, retrieved and the file name `terms/<id>-<version>.txt`; the index package installs the files next to `catalog.json` |
 | `readme` | no | The upstream project's README, shown on the app's Store page: `{ url; retrieved; text; }`. `url` is the file at the exact upstream commit (`https://github.com/<repo>/blob/<sha>/README.md`), `retrieved` the date it was copied, `text` the file `./readme/<id>.md`, unmodified, at most 64 KiB. Apps with the same upstream (the OpenRA mods) each have their own copy. The index carries url, retrieved and `readme/<id>.md`; the index package installs the files next to `catalog.json`. See "Upstream READMEs" |
 | `dataPaths` | no | Paths relative to a profile's home that hold the app's data. "Remove and delete data" deletes them in the removing profile's home only, after a second confirmation. No leading `/` or `~`, no `.`, `..` or empty components, no wildcards. A kiosk (web) app must list its Firefox profile, `.local/share/hinteros/firefox/<id>`. Deleting Steam's `.local/share/Steam` also removes installed games. Services keep their data in `/var/lib` and list none |
@@ -79,22 +79,22 @@ M10); it is never in the Store. See [How to add an app](#adding-an-app-or-a-serv
 | `sandbox` | no (apps) | Default `true`: the session daemon starts the app in its bwrap sandbox, with its own home `.local/share/hinteros/sandbox/<id>` (added to `dataPaths` automatically). `false` only for Steam, which runs its own sandbox; such an app has no `permissions`. In the index |
 | `notes` | no | Maintainer notes (upstream quirks, review findings); not in the index |
 
-Derived fields in `catalog` and the index: `id`, `type` (`web` if `app.kiosk` is set, else
-`native`; `service` for services; `apps.list`'s web/native `kind` is this `type`) and
-`buildsOnDevice` (true for unfree entries without `cache`: only `cache = true` unfree entries are
-in the vendor cache, and nothing unfree is ever on the ISO). For a sandboxed app, `dataPaths`
-also has its sandbox home, `.local/share/hinteros/sandbox/<id>`, and `sandbox` is always `false`
-for services.
+Derived fields in `catalog` and the index: `id` and `delivery` (see above; nothing unfree is ever
+on the ISO). For a sandboxed app, `dataPaths` also has its sandbox home,
+`.local/share/hinteros/sandbox/<id>`, and `sandbox` is always `false` for services. `catalog` also
+has `type` (`web` if `app.kiosk` is set, else `native`; `service` for services), which the
+validator reads; it is not in the index. In the index, `license.unfree` is the entry field `unfree`.
 
 ### Library outputs for the system repo
 
 `lib` (flake output) also has, bound to this catalog: `appsOnly` and `services` (the catalog
-filtered by kind), `featuresOf ids` (the sorted union of `box` features of those app ids; throws
+filtered by kind), `featuresOf ids` (the sorted union of the `boxFeatures` of those app ids; throws
 on an unknown id), `starterDefaults` (`{ offered; ticked; onIso; }` id lists for the installer),
 `catalogIds` (`{ <id> = { name, kind, status, statusReason }; }`, evaluated without any
 package), `servicesNeededBy ids` (the sorted service ids those apps need) and `cacheableUnfree`.
 The pure versions (`appsOnlyOf`, `servicesOf`, `featuresOfIn`, `servicesNeededBy`,
 `starterDefaultsOf`, `catalogIdsOf`, `cacheableUnfreeOf`) take a catalog as argument.
+
 ### Icons
 
 The repo never contains logos or other images. An entry may instead link to the vendor's own
@@ -102,8 +102,7 @@ public logo with `icon.iconUrl`; the box's session daemon downloads it at runtim
 at most 1 MiB, image content-type and magic bytes checked, and only the file whose SHA-256 is
 `icon.sha256`), caches it under `~/.cache/hinteros/icons` and refreshes it about monthly. A
 changed or replaced file upstream is refused (logged on the box) until the entry gets the new
-hash. The index carries `iconUrl` and `sha256` (optional in the schema, indexVersion stays 3:
-the daemon reads older indexes without it and then checks no hash), so the launcher's Store can
+hash. The index carries `iconUrl` and `sha256`, so the launcher's Store can
 show logos before an app is installed. Priority, first hit wins:
 
 1. the installed app's own desktop icon (`desktopId`)
@@ -123,23 +122,6 @@ suitable official URL exists, leave `iconUrl` unset and say why; the fallbacks c
 `iconUrl` also an image content-type, at most 1 MiB, image magic bytes and the `sha256`), prints a table and
 exits non-zero on failures. It needs network, so it is not part of `nix flake check`; the
 scheduled `.forgejo/workflows/links.yml` runs it weekly.
-
-### Changes from format 2
-
-| Format 2 | Format 3 |
-|---|---|
-| `app` got the NixOS module arguments (`config`, `options`, `lib`, `pkgs`) | `app` gets `{ pkgs, lib, box }` only: apps are built outside the system |
-| `nixos` on any entry | Only services, as `service`. Apps use `box` features |
-| `requires = [ "graphics32" ]` | `box = [ "graphics32" "steam-devices" ]` |
-| `installer`, `installerDefault` | `starter = "offered" \| "ticked"` |
-| none | `kind = "app" \| "service"` |
-| derived `kind` (`web`/`native`) | derived `type` (`web`/`native`/`service`) |
-| Index version 2 | Index version 3 (`kind`, `type`, `box`, `starter`, `cache`; `requires`, `installer`, `installerDefault` gone) |
-
-Entries moved in the same change: Steam has `box` and `app = { box, ... }: { package = box.steam; listed = false; }`;
-Crunchyroll lost `onIso` (Store only); Plex and Moonlight lost `installer`; `jellyfin-server` is the
-first service. Entries that name format 2 fields are rejected. The system repo adopts format 3 by
-bumping its lock together with its env builder (`docs/design/catalog.md`, "Format versioning").
 
 ### Removing an app
 
@@ -162,13 +144,13 @@ Boxes that have a removed app lose it on their next update, and the update scree
 **An app** is something a profile uses: it goes in the Store. **A service** runs for the whole box
 (a media server, a VPN) and only the admin profile turns it on; it is never in the Store. If it
 needs box-wide configuration but runs nothing for users (Steam's 32-bit graphics), it is an app
-with `box` features, not a service.
+with `boxFeatures`, not a service.
 
 1. Create `apps/<id>.nix`; copy the closest example (`moonlight.nix` for a free native app,
    `crunchyroll.nix` for a web app, `plex-htpc.nix` for an unfree one with terms, `steam.nix` for a
-   cached unfree one with `box` features, `youtube.nix` for a starter-set app on the ISO,
+   cached unfree one with `boxFeatures`, `youtube.nix` for a starter-set app on the ISO,
    `jellyfin-server.nix` for a service: `kind = "service"`, a `service` module in the allowed
-   namespaces, `packages`, `ports`, `setup`, `stateDirs`, no `app`/`box`/`starter`/`onIso`). Unfree apps need `terms`: fetch the vendor's text, see below.
+   namespaces, `packages`, `ports`, `setup`, `stateDirs`, no `app`/`boxFeatures`/`starter`/`onIso`). Unfree apps need `terms`: fetch the vendor's text, see below.
 2. Run `nix flake check`. It validates the entry, checks the licence declaration against nixpkgs
    (unfree apps are evaluated only, never built), evaluates a NixOS system with every box feature and service, and
    checks the generated index against `schema/index.schema.json`.
@@ -179,9 +161,9 @@ with `box` features, not a service.
      text entry works with the on-screen keyboard.
    - `license` matches the real licence; for unfree apps the vendor's terms allow installing it
      on the box. Nothing unfree is ever on the ISO (`onIso`).
-   - `cache = true` only if the vendor's licence allows redistribution: every unfree package of the
+   - `delivery = "download"` only if the vendor's licence allows redistribution: every unfree package of the
      entry has nixpkgs' `unfreeRedistributable` licence (`nix flake check` enforces it) and the
-     vendor's terms agree. Plex-style apps stay `false`.
+     vendor's terms agree. Plex-style apps stay `"build"`.
    - Terms: `terms.text` is the vendor's current full text (nothing paraphrased), `version`, `url`
      and `retrieved` are right, and the file is named `<id>-<version>.txt`.
    - `dataPaths` lists every directory the app writes under a profile's home (check on a box:
@@ -197,7 +179,7 @@ with `box` features, not a service.
      No advice on when to install it, no account or subscription notes, no install, DRM,
      resolution or Linux-support notes and no implementation details: those go in comments.
 4. Merge, then bump `hinteros-catalog` in the system repo's `flake.lock` on `beta`. CI builds and
-   caches every free entry and every `cache = true` entry; boxes on `beta` see the app after their next update.
+   caches every free entry and every unfree entry with `delivery = "download"`; boxes on `beta` see the app after their next update.
 
 ## Refreshing vendor terms
 
@@ -213,7 +195,7 @@ announces a change:
 3. In the entry, set `terms.version`, `terms.retrieved` (today) and `terms.text`; `git rm` the old
    file.
 4. Read the diff against the old text for changes that affect the install decision (new
-   licence restrictions, redistribution, subscription terms) and revisit `cache` and the
+   licence restrictions, redistribution, subscription terms) and revisit `delivery` and the
    description if so.
 5. `nix flake check`. A new `version` makes boxes ask for acceptance again on the next install of
    that app (the box records the accepted version).

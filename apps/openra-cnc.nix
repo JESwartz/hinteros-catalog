@@ -24,8 +24,7 @@
     text = ./readme/openra-cnc.md;
   };
   license = {
-    free = true;
-    redistributable = true;
+    unfree = false;
   };
   # nix path-info -S of the closure is about 1.1 GiB; most of it (GTK, ffmpeg, python) a box
   # already has. The engine and all three games (51 MiB), the .NET runtime (71 MiB) and the

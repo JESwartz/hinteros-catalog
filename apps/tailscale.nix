@@ -14,8 +14,7 @@
   category = "utilities";
   homepage = "https://tailscale.com";
   license = {
-    free = true;
-    redistributable = true;
+    unfree = false;
   };
   sizeMiB = 80;
   # No iconUrl yet: no official logo URL has been checked (2026-10-20). The siteUrl discovery

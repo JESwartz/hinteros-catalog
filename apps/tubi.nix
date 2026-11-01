@@ -12,8 +12,7 @@
   category = "video";
   homepage = "https://tubitv.com";
   license = {
-    free = true;
-    redistributable = true;
+    unfree = false;
   };
   # Only the shared Firefox; nothing app-specific is downloaded.
   sizeMiB = 1;

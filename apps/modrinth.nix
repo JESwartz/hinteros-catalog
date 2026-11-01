@@ -1,5 +1,5 @@
 # Modrinth App: unfreeRedistributable in nixpkgs (GPL-3.0 code with unfree parts), native (Tauri),
-# cached like Steam (`cache = true`): CI builds it, the binary cache serves it. A launcher for
+# cached like Steam (`delivery = "download"`): CI builds it, the binary cache serves it. A launcher for
 # Minecraft: Java Edition with mods and modpacks from Modrinth.
 # Playing Minecraft needs a paid Microsoft account, signed in from the app. Minecraft: Java
 # Edition has no controller support of its own: `keyboard` input gives the right stick as the
@@ -22,8 +22,7 @@
     text = ./readme/modrinth.md;
   };
   license = {
-    free = false;
-    redistributable = true;
+    unfree = true;
     unfreePackages = [
       "modrinth-app"
       "modrinth-app-unwrapped"
@@ -43,7 +42,7 @@
     sha256 = "9cf29b6b33efbcc5fbf6968abbde374b0bf49a658efed63d46066c858ffc729c";
   };
   # unfreeRedistributable (checked against nixpkgs by tests/packages.nix).
-  cache = true;
+  delivery = "download";
 
   # Refresh when Modrinth revises its terms (see README, "Refreshing vendor terms"). The text is
   # the page's source in Modrinth's repository (apps/frontend/src/pages/legal/terms.vue at

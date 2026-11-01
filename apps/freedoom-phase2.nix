@@ -25,8 +25,7 @@
     text = ./readme/freedoom-phase2.md;
   };
   license = {
-    free = true;
-    redistributable = true;
+    unfree = false;
   };
   # UZDoom (about 40 MiB more than the libraries a box already has) and Freedoom's IWADs (about
   # 85 MiB): an estimate, not measured on a box. Phase 1 shares both.

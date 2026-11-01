@@ -14,8 +14,7 @@
   category = "video";
   homepage = "https://www.youtube.com";
   license = {
-    free = true;
-    redistributable = true;
+    unfree = false;
   };
   # Only the shared Firefox; nothing app-specific is downloaded.
   sizeMiB = 1;

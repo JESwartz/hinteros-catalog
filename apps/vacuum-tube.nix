@@ -21,8 +21,7 @@
     text = ./readme/vacuum-tube.md;
   };
   license = {
-    free = true;
-    redistributable = true;
+    unfree = false;
   };
   # nix path-info -S of the closure is about 1.7 GiB including Electron's dependencies, most of
   # which a box already has; this is an estimate, not measured on a box.

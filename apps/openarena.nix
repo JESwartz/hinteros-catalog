@@ -17,8 +17,7 @@
   category = "games";
   homepage = "https://openarena.ws";
   license = {
-    free = true;
-    redistributable = true;
+    unfree = false;
   };
   # The engine and the game data (about 430 MiB more than the libraries a box already has): an
   # estimate, not measured on a box.

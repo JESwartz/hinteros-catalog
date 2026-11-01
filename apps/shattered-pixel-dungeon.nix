@@ -17,8 +17,7 @@
     text = ./readme/shattered-pixel-dungeon.md;
   };
   license = {
-    free = true;
-    redistributable = true;
+    unfree = false;
   };
   # The game and its Java runtime (about 630 MiB more than the libraries a box already has): an
   # estimate, not measured on a box.

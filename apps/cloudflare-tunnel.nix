@@ -17,8 +17,7 @@
   category = "utilities";
   homepage = "https://www.cloudflare.com/products/tunnel/";
   license = {
-    free = true;
-    redistributable = true;
+    unfree = false;
   };
   sizeMiB = 40;
   # No iconUrl yet: no official logo URL has been checked (2026-10-20). The siteUrl discovery
@@ -32,7 +31,7 @@
 
   # Outbound only.
   ports = [ ];
-  setup = "cloudflare";
+  setup = "cloudflare-tunnel";
   stateDirs = [ "hinteros/services/cloudflare-tunnel" ];
 
   notes = ''

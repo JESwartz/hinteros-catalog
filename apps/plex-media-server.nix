@@ -15,8 +15,7 @@
   category = "video";
   homepage = "https://www.plex.tv";
   license = {
-    free = false;
-    redistributable = false;
+    unfree = true;
     unfreePackages = [ "plexmediaserver" ];
   };
   # The server; metadata and thumbnails grow in /var/lib/plex.
@@ -27,7 +26,7 @@
     sha256 = "78072fd57aacff1f73dee6432fb8d7f0360f300b4545422fb767cce638c4e7d3";
   };
   # Never cached: Plex Media Server is not redistributable.
-  cache = false;
+  delivery = "build";
 
   # The same Plex Terms of Service as plex-htpc (one document covers Plex's software).
   terms = {
@@ -72,7 +71,7 @@
       from = "lan";
     }
   ];
-  setup = "plex";
+  setup = "plex-media-server";
   stateDirs = [ "plex" ];
 
   notes = ''

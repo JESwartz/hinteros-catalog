@@ -17,8 +17,7 @@
     text = ./readme/supertuxkart.md;
   };
   license = {
-    free = true;
-    redistributable = true;
+    unfree = false;
   };
   # The game and its tracks and karts (about 830 MiB more than the libraries a box already has):
   # an estimate, not measured on a box.

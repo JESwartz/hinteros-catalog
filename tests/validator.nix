@@ -12,8 +12,7 @@ let
     category = "utilities";
     homepage = "https://example.org";
     license = {
-      free = true;
-      redistributable = true;
+      unfree = false;
     };
     sizeMiB = 10;
     icon.desktopId = "org.example.Example";
@@ -38,8 +37,7 @@ let
   };
   unfreeRedistributable = {
     license = {
-      free = false;
-      redistributable = true;
+      unfree = true;
       unfreePackages = [ "x" ];
     };
   };
@@ -56,8 +54,7 @@ let
     category = "utilities";
     homepage = "https://example.org";
     license = {
-      free = true;
-      redistributable = true;
+      unfree = false;
     };
     sizeMiB = 10;
     icon = { };
@@ -102,8 +99,7 @@ let
         good
         // {
           license = {
-            free = false;
-            redistributable = false;
+            unfree = true;
           };
         }
       );
@@ -114,8 +110,7 @@ let
         good
         // {
           license = {
-            free = true;
-            redistributable = true;
+            unfree = false;
             unfreePackages = [ "hello" ];
           };
         }
@@ -150,79 +145,90 @@ let
         _catalog = [ "a: onIso but depends on b, which is not onIso" ];
       };
     };
-    testCacheOnlyUnfree = {
-      expr = refuses "cache: only for unfree entries" (good // { cache = true; });
-      expected = true;
+    testDeliveryOnlyUnfree = {
+      expr = map (d: refuses "delivery: only for unfree entries" (good // { delivery = d; })) [
+        "download"
+        "build"
+      ];
+      expected = [
+        true
+        true
+      ];
     };
-    testCacheNeedsRedistributable = {
-      expr = refuses "only unfreeRedistributable entries may be cached" (
-        good
-        // {
-          cache = true;
-          license = {
-            free = false;
-            redistributable = false;
-            unfreePackages = [ "x" ];
-          };
-          inherit terms;
-        }
+    testBadDelivery = {
+      expr = refuses "delivery: must be null or one of" (
+        good // { delivery = "cache"; } // unfreeRedistributableWithTerms
       );
       expected = true;
     };
-    testCachedUnfreePasses = {
+    testOldLicenceAndCacheFieldsRefused = {
+      expr = [
+        (refuses "license: unknown field(s) free, redistributable" (
+          good
+          // {
+            license = {
+              free = true;
+              redistributable = true;
+              unfree = false;
+            };
+          }
+        ))
+        (refuses "unknown field(s): cache" (good // { cache = false; }))
+      ];
+      expected = [
+        true
+        true
+      ];
+    };
+    testDownloadedUnfreePasses = {
       expr = problems "example" (
         good
         // {
-          cache = true;
-          inherit terms;
+          delivery = "download";
         }
-        // unfreeRedistributable
+        // unfreeRedistributableWithTerms
       );
       expected = [ ];
     };
-    testBuildsOnDevice = {
-      expr = map (e: (catalogLib.normalize "example" e).buildsOnDevice) [
+    testDeliveryDefault = {
+      expr = map (e: (catalogLib.normalize "example" e).delivery) [
         good
-        (good // { inherit terms; } // unfreeRedistributable)
-        (
-          good
-          // {
-            cache = true;
-            inherit terms;
-          }
-          // unfreeRedistributable
-        )
+        (good // unfreeRedistributableWithTerms)
+        (good // { delivery = "build"; } // unfreeRedistributableWithTerms)
+        (good // { delivery = "download"; } // unfreeRedistributableWithTerms)
       ];
       expected = [
-        false
-        true
-        false
+        "download"
+        "build"
+        "build"
+        "download"
       ];
     };
     testCacheableUnfree = {
       expr = catalogLib.cacheableUnfreeOf (
         lib.mapAttrs catalogLib.normalize {
           a = good;
-          b =
-            good
-            // {
-              cache = true;
-              inherit terms;
-            }
-            // unfreeRedistributable;
+          b = good // { delivery = "download"; } // unfreeRedistributableWithTerms;
           c =
             good
-            // {
-              inherit terms;
-            }
-            // unfreeRedistributable
+            // unfreeRedistributableWithTerms
             // {
               license = {
-                free = false;
-                redistributable = true;
+                unfree = true;
                 unfreePackages = [ "other" ];
               };
             };
+          d = {
+            format = 3;
+            name = "Gone";
+            status = "removed";
+            statusReason = "Gone.";
+            delivery = "download";
+            license = {
+              unfree = true;
+              unfreePackages = [ "gone" ];
+            };
+          };
         }
       );
       expected = [ "x" ];
@@ -277,7 +283,7 @@ let
                   };
                 }
               );
-            }).apps
+            }).entries
           ).icon;
       };
       expected = {
@@ -320,7 +326,7 @@ let
       expr =
         (lib.head
           (catalogLib.mkIndex { example = catalogLib.normalize "example" (good // { inherit readme; }); })
-          .apps
+          .entries
         ).readme;
       expected = {
         inherit (readme) url retrieved;
@@ -457,7 +463,7 @@ let
       expr = problems "example" (
         good
         // {
-          box = [
+          boxFeatures = [
             "graphics32"
             "steam-devices"
           ];
@@ -483,11 +489,13 @@ let
       expected = true;
     };
     testUnknownBoxFeature = {
-      expr = refuses "box: must be a list of box features" (good // { box = [ "graphics64" ]; });
+      expr = refuses "boxFeatures: must be a list of box features" (
+        good // { boxFeatures = [ "graphics64" ]; }
+      );
       expected = true;
     };
     testBoxFeaturesAccepted = {
-      expr = map (f: problems "example" (good // { box = [ f ]; })) catalogLib.features;
+      expr = map (f: problems "example" (good // { boxFeatures = [ f ]; })) catalogLib.features;
       expected = [
         [ ]
         [ ]
@@ -585,7 +593,7 @@ let
               goodService
               // {
                 ${f} =
-                  if f == "box" then
+                  if f == "boxFeatures" then
                     [ ]
                   else if f == "starter" then
                     "offered"
@@ -595,7 +603,7 @@ let
             )
           )
           [
-            "box"
+            "boxFeatures"
             "starter"
             "onIso"
           ];
@@ -697,7 +705,7 @@ let
               from = "any";
             }
           ];
-          setup = "jellyfin";
+          setup = "jellyfin-server";
           stateDirs = [
             "example"
             "hinteros/services/example"
@@ -888,11 +896,11 @@ let
       let
         cat = lib.mapAttrs catalogLib.normalize {
           a = good // {
-            box = [ "steam-devices" ];
+            boxFeatures = [ "steam-devices" ];
             starter = "offered";
           };
           b = good // {
-            box = [
+            boxFeatures = [
               "graphics32"
               "steam-devices"
             ];
@@ -1014,7 +1022,7 @@ let
             "b"
           ];
           none = catalogLib.servicesNeededBy cat [ "c" ];
-          index = map (e: e.needsServices or null) (catalogLib.mkIndex cat).apps;
+          index = map (e: e.needsServices or null) (catalogLib.mkIndex cat).entries;
         };
       expected = {
         some = [
@@ -1045,9 +1053,9 @@ let
     };
     testIndexVersion = {
       expr = (catalogLib.mkIndex { }).indexVersion;
-      expected = 3;
+      expected = 4;
     };
-    testIndexCarriesV3Fields = {
+    testIndexCarriesFields = {
       expr =
         let
           e =
@@ -1056,27 +1064,41 @@ let
                 x = catalogLib.normalize "x" (
                   good
                   // {
-                    box = [ "graphics32" ];
+                    boxFeatures = [ "graphics32" ];
                     starter = "offered";
                   }
                 );
-              }).apps;
+              }).entries;
         in
         [
           e.kind
-          e.type
-          e.box
+          (e ? type)
+          e.boxFeatures
           e.starter
           e.onIso
+          e.unfree
+          e.delivery
+          (e ? box)
+          (e ? free)
+          (e ? redistributable)
+          (e ? cache)
+          (e ? buildsOnDevice)
           (e ? requires)
           (e ? installer)
           (e ? installerDefault)
         ];
       expected = [
         "app"
-        "native"
+        false
         [ "graphics32" ]
         "offered"
+        false
+        false
+        "download"
+        false
+        false
+        false
+        false
         false
         false
         false
@@ -1190,7 +1212,7 @@ let
             a = catalogLib.normalize "a" (good // { permissions.gamepad = "required"; });
             b = catalogLib.normalize "b" (good // { sandbox = false; });
             s = catalogLib.normalize "s" goodService;
-          }).apps;
+          }).entries;
       expected = [
         {
           id = "a";
@@ -1359,7 +1381,7 @@ let
                 };
               }
             );
-          }).apps
+          }).entries
         ).icon;
       expected = {
         desktopId = "x";

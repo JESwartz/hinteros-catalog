@@ -13,8 +13,7 @@
   category = "games";
   homepage = "https://sourceforge.net/projects/extremetuxracer/";
   license = {
-    free = true;
-    redistributable = true;
+    unfree = false;
   };
   # About 50 MiB more than the libraries a box already has: an estimate, not measured on a box.
   sizeMiB = 50;
