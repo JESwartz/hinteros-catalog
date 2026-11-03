@@ -1,6 +1,6 @@
 # hinteros-catalog
 
-The curated App Store catalog for [HinterOS](https://justsomeshed.com/JSwartz/HinterOS/hinteros):
+The curated App Store catalog for [HinterOS](https://hinteros.org):
 one entry per app that a HinterOS profile can install from the Store or the installer, and per
 service (box-wide software) that the admin can turn on.
 
