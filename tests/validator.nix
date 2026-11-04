@@ -59,6 +59,7 @@ let
     sizeMiB = 10;
     icon = { };
     service = _: { services.example.enable = true; };
+    packages = pkgs: [ pkgs.hello ];
   };
 
   problems = id: e: catalogLib.checkEntry id e;
@@ -238,7 +239,7 @@ let
       expected = true;
     };
     testTermsFileName = {
-      expr = refuses "the file must be named example-2.0.txt" (
+      expr = refuses "the file must be named <name>-2.0.txt" (
         good
         // {
           terms = terms // {
@@ -247,6 +248,30 @@ let
         }
       );
       expected = true;
+    };
+    # Entries with one document share one file (<vendor>-<version>.txt), and must agree on it.
+    testTermsSharedFile = {
+      expr =
+        let
+          unfreeWith = t: good // unfreeRedistributable // { terms = t; };
+        in
+        {
+          shared = catalogLib.validate {
+            a = unfreeWith terms;
+            b = unfreeWith terms;
+          };
+          drift = catalogLib.validate {
+            a = unfreeWith terms;
+            b = unfreeWith (terms // { title = "Old Example Terms"; });
+          };
+        };
+      expected = {
+        shared = { };
+        drift._catalog = [
+          "a: terms differ from b's, which has the same url or file (share one file and version)"
+          "b: terms differ from a's, which has the same url or file (share one file and version)"
+        ];
+      };
     };
     testTermsFields = {
       expr = map (t: refuses "terms." (good // { terms = terms // t; })) [
@@ -360,8 +385,15 @@ let
         "a//b"
         "a/"
         ".config/*"
+        # The daemon refuses the whole index for these (is_data_path).
+        ".config/Foo [beta]"
+        ".config/a]b"
+        ".config\\Foo"
+        ".config/a\tb"
+        # A C1 control (U+0085), which [[:cntrl:]] does not see.
+        (builtins.fromJSON ''".config/a\u0085b"'')
       ];
-      expected = lib.genList (_: true) 9;
+      expected = lib.genList (_: true) 14;
     };
     testKioskNeedsProfileDataPath = {
       expr = refuses "dataPaths: a kiosk (web) app must list its Firefox profile" (
@@ -636,7 +668,7 @@ let
             services.example.enable = true;
             hardware.bluetooth.enable = true;
             systemd.services.example.serviceConfig.Nice = 5;
-            systemd.services.example-worker.serviceConfig.Nice = 5;
+            systemd.services.exampled.serviceConfig.Nice = 5;
           };
         }
       );
@@ -812,6 +844,70 @@ let
       );
       expected = true;
     };
+    # Only <name> and <name>d: `services.s = { }` does not own every unit that starts with s.
+    testServiceOwnUnitExact = {
+      expr =
+        map
+          (
+            u:
+            refuses "systemd.services.${u} is not the module's own unit" (
+              goodService
+              // {
+                service = _: {
+                  services.s.enable = true;
+                  systemd.services.${u}.enable = false;
+                };
+              }
+            )
+          )
+          [
+            "sshd"
+            "s-worker"
+            "systemd-logind"
+          ];
+      expected = lib.genList (_: true) 3;
+    };
+    # openFirewall inside mkIf/mkMerge/mkForce is still refused, and services/systemd must be
+    # plain attrsets (the validator reads their names).
+    testServiceOpenFirewallWrapped = {
+      expr =
+        map
+          (
+            v:
+            refuses "services.example.openFirewall not allowed" (
+              goodService // { service = { lib, ... }: { services.example = v lib; }; }
+            )
+          )
+          [
+            (lib: lib.mkIf true { openFirewall = true; })
+            (
+              lib:
+              lib.mkMerge [
+                { enable = true; }
+                (lib.mkIf true { openFirewall = true; })
+              ]
+            )
+            (lib: lib.mkForce { openFirewall = true; })
+          ];
+      expected = lib.genList (_: true) 3;
+    };
+    testServiceNoWrappedNamespaces = {
+      expr =
+        map
+          (m: refuses "a plain attrset, not mkIf/mkMerge" (goodService // { service = { lib, ... }: m lib; }))
+          [
+            (lib: { services = lib.mkIf true { example.openFirewall = true; }; })
+            (lib: {
+              services.example.enable = true;
+              systemd = lib.mkMerge [ { services.example.enable = true; } ];
+            })
+            (lib: {
+              services.example.enable = true;
+              systemd.services = lib.mkIf true { sshd.enable = false; };
+            })
+          ];
+      expected = lib.genList (_: true) 3;
+    };
     testServiceSystemdOnlyServices = {
       expr = refuses "systemd.timers not allowed" (
         goodService
@@ -891,67 +987,6 @@ let
       expected = "service";
     };
 
-    # Library views.
-    testViews =
-      let
-        cat = lib.mapAttrs catalogLib.normalize {
-          a = good // {
-            boxFeatures = [ "steam-devices" ];
-            starter = "offered";
-          };
-          b = good // {
-            boxFeatures = [
-              "graphics32"
-              "steam-devices"
-            ];
-            onIso = true;
-            starter = "ticked";
-          };
-          c = good;
-          s = goodService;
-        };
-      in
-      {
-        expr = {
-          apps = lib.attrNames (catalogLib.appsOnlyOf cat);
-          services = lib.attrNames (catalogLib.servicesOf cat);
-          features = catalogLib.featuresOfIn cat [
-            "a"
-            "b"
-            "c"
-          ];
-          none = catalogLib.featuresOfIn cat [ ];
-          starter = catalogLib.starterDefaultsOf cat;
-          ids = catalogLib.catalogIdsOf cat;
-        };
-        expected = {
-          apps = [
-            "a"
-            "b"
-            "c"
-          ];
-          services = [ "s" ];
-          features = [
-            "graphics32"
-            "steam-devices"
-          ];
-          none = [ ];
-          starter = {
-            offered = [
-              "a"
-              "b"
-            ];
-            ticked = [ "b" ];
-            onIso = [ "b" ];
-          };
-          ids = lib.genAttrs [ "a" "b" "c" "s" ] (id: {
-            name = if id == "s" then "Example server" else "Example";
-            kind = if id == "s" then "service" else "app";
-            status = "available";
-            statusReason = null;
-          });
-        };
-      };
     # needsServices: apps may need services (not depends, which stays within a kind).
     testNeedsServicesValid = {
       expr = catalogLib.validate {
@@ -998,58 +1033,31 @@ let
         _catalog = [ "a: a app cannot depend on s, which is a service" ];
       };
     };
-    testServicesNeededBy = {
+    testNeedsServicesInIndex = {
       expr =
-        let
-          cat = lib.mapAttrs catalogLib.normalize {
-            a = good // {
-              needsServices = [
-                "s2"
-                "s1"
-              ];
-            };
-            b = good // {
-              needsServices = [ "s1" ];
-            };
-            c = good;
-            s1 = goodService;
-            s2 = goodService;
-          };
-        in
-        {
-          some = catalogLib.servicesNeededBy cat [
-            "a"
-            "b"
-          ];
-          none = catalogLib.servicesNeededBy cat [ "c" ];
-          index = map (e: e.needsServices or null) (catalogLib.mkIndex cat).entries;
-        };
-      expected = {
-        some = [
-          "s1"
+        map (e: e.needsServices or null)
+          (catalogLib.mkIndex (
+            lib.mapAttrs catalogLib.normalize {
+              a = good // {
+                needsServices = [
+                  "s2"
+                  "s1"
+                ];
+              };
+              c = good;
+              s1 = goodService;
+              s2 = goodService;
+            }
+          )).entries;
+      expected = [
+        [
           "s2"
-        ];
-        none = [ ];
-        index = [
-          [
-            "s2"
-            "s1"
-          ]
-          [ "s1" ]
-          [ ]
-          [ ]
-          [ ]
-        ];
-      };
-    };
-    testServicesNeededByUnknownThrows = {
-      expr =
-        (builtins.tryEval (builtins.deepSeq (catalogLib.servicesNeededBy { } [ "nope" ]) true)).success;
-      expected = false;
-    };
-    testFeaturesOfUnknownThrows = {
-      expr = (builtins.tryEval (builtins.deepSeq (catalogLib.featuresOfIn { } [ "nope" ]) true)).success;
-      expected = false;
+          "s1"
+        ]
+        [ ]
+        [ ]
+        [ ]
+      ];
     };
     testIndexVersion = {
       expr = (catalogLib.mkIndex { }).indexVersion;
@@ -1132,8 +1140,22 @@ let
       expr = refuses "sandbox: must be a bool" (good // { sandbox = "no"; });
       expected = true;
     };
+    # Optional would let the user switch off the app's only input.
+    testGamepadInputNeedsRequired = {
+      expr = refuses "permissions.gamepad: \"required\" for input" (
+        good
+        // {
+          permissions.gamepad = "optional";
+          app = { pkgs, ... }: {
+            package = pkgs.hello;
+            input = "gamepad";
+          };
+        }
+      );
+      expected = true;
+    };
     testGamepadInputNeedsPermission = {
-      expr = refuses "permissions.gamepad: required for input" (
+      expr = refuses "permissions.gamepad: \"required\" for input" (
         good
         // {
           app = { pkgs, ... }: {
@@ -1144,8 +1166,147 @@ let
       );
       expected = true;
     };
+    # The session daemon refuses these, and then drops every app of the profile's env.
+    testBackKeyNeedsKeyboard = {
+      expr =
+        map
+          (
+            a:
+            refuses "backKey and kiosk.fullscreenOnly need input = \"keyboard\"" (
+              good
+              // {
+                permissions.gamepad = "required";
+                dataPaths = [ ".local/share/hinteros/firefox/example" ];
+                app = _: a;
+              }
+            )
+          )
+          [
+            {
+              command = [ "x" ];
+              backKey = "escape";
+            }
+            {
+              command = [ "x" ];
+              input = "gamepad";
+              backKey = "escape";
+            }
+            {
+              kiosk = {
+                url = "https://example.org";
+                fullscreenOnly = true;
+              };
+            }
+          ];
+      expected = [
+        true
+        true
+        true
+      ];
+    };
+    testBackKeyNull = {
+      expr = problems "example" (
+        good
+        // {
+          permissions.gamepad = "required";
+          dataPaths = [ ".local/share/hinteros/firefox/example" ];
+          app = _: {
+            command = [ "x" ];
+            backKey = null;
+          };
+        }
+      );
+      expected = [ ];
+    };
+    testBackKeyNames = {
+      expr =
+        map
+          (
+            k:
+            problems "example" (
+              good
+              // {
+                app = _: {
+                  command = [ "x" ];
+                  input = "keyboard";
+                  backKey = k;
+                };
+              }
+            )
+          )
+          [
+            "escape"
+            "Esc"
+            "alt+left"
+            "ctrl + shift + f5"
+            "backspace"
+          ];
+      expected = lib.genList (_: [ ]) 5;
+    };
+    testBackKeyUnknownName = {
+      expr =
+        map
+          (
+            k:
+            refuses "app.backKey: a key name" (
+              good
+              // {
+                app = _: {
+                  command = [ "x" ];
+                  input = "keyboard";
+                  backKey = k;
+                };
+              }
+            )
+          )
+          [
+            "escap"
+            "hyper+a"
+            "alt+"
+            ""
+            42
+          ];
+      expected = lib.genList (_: true) 5;
+    };
+    testAppValueTypes = {
+      expr =
+        map
+          (
+            a:
+            lib.length (
+              problems "example" (
+                good
+                // {
+                  dataPaths = [ ".local/share/hinteros/firefox/example" ];
+                  app = _: { input = "keyboard"; } // a;
+                }
+              )
+            )
+          )
+          [
+            {
+              command = [ "x" ];
+              order = "1";
+            }
+            { command = [ ]; }
+            { command = "x"; }
+            {
+              kiosk = {
+                url = "https://example.org";
+                userAgent = "a\nb";
+              };
+            }
+            {
+              kiosk = {
+                url = "https://example.org";
+                fullscreenOnly = "yes";
+              };
+            }
+          ];
+      expected = lib.genList (_: 1) 5;
+    };
     testNoInputNeedsPermission = {
-      expr = refuses "permissions.gamepad: required for input" (
+      expr = refuses "permissions.gamepad: \"required\" for input" (
         good // { app = { pkgs, ... }: { package = pkgs.hello; }; }
       );
       expected = true;
@@ -1172,6 +1333,19 @@ let
         }
       );
       expected = true;
+    };
+    # Nothing deletes a service's dataPaths; without packages the licence checks see nothing.
+    testServiceDataPathsAndPackages = {
+      expr = [
+        (refuses "dataPaths: only for apps" (goodService // { dataPaths = [ ".config/x" ]; }))
+        (refuses "packages: required for services" (builtins.removeAttrs goodService [ "packages" ]))
+        (refuses "packages: required for services" (goodService // { packages = null; }))
+      ];
+      expected = [
+        true
+        true
+        true
+      ];
     };
     testServiceHasNoSandboxFields = {
       expr = [
@@ -1247,6 +1421,42 @@ let
         statusReason = "Discontinued upstream.";
       };
       expected = [ ];
+    };
+    # The index of a tombstone keeps its data paths and the sandbox home, so profiles can still
+    # delete the data after the update removes the app.
+    testTombstoneKeepsDataPaths = {
+      expr =
+        let
+          tomb = {
+            format = 3;
+            name = "Old app";
+            status = "removed";
+            statusReason = "Discontinued upstream.";
+          };
+        in
+        {
+          problems = problems "old" (tomb // { dataPaths = [ ".config/old" ]; });
+          index =
+            map (e: e.dataPaths)
+              (catalogLib.mkIndex {
+                old = catalogLib.normalize "old" (tomb // { dataPaths = [ ".config/old" ]; });
+                unsandboxed = catalogLib.normalize "unsandboxed" (tomb // { sandbox = false; });
+                svc = catalogLib.normalize "svc" (tomb // { kind = "service"; });
+              }).entries;
+          inherit (catalogLib.normalize "old" tomb) sandbox;
+        };
+      expected = {
+        problems = [ ];
+        index = [
+          [
+            ".config/old"
+            ".local/share/hinteros/sandbox/old"
+          ]
+          [ ]
+          [ ]
+        ];
+        sandbox = false;
+      };
     };
     testTombstoneHasNoModule = {
       expr = refuses "a removed entry has no app or service" {

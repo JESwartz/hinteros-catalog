@@ -27,9 +27,9 @@
   # which a box already has; this is an estimate, not measured on a box.
   sizeMiB = 450;
   icon = {
-    # VacuumTube's own repository (assets/icon.png, 1024x1024 PNG, MIT). Checked 2026-10-07.
+    # VacuumTube's own repository (assets/icon.png, 1024x1024 PNG, MIT), at the last commit that changed it. Checked 2026-10-07, pinned 2026-11-03.
     desktopId = "VacuumTube";
-    iconUrl = "https://raw.githubusercontent.com/shy1132/VacuumTube/main/assets/icon.png";
+    iconUrl = "https://raw.githubusercontent.com/shy1132/VacuumTube/15b4fb2ad55cb5fee5d5333f0f8c8b582e1905ff/assets/icon.png";
     sha256 = "a315a1175e5835eee596891a65c57ace8d24ba940e464854c7f0d380e56802e7";
   };
   # Offered, not ticked: the YouTube entry already covers the same service.

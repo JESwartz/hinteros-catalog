@@ -93,6 +93,77 @@ let
     "order"
     "listed"
   ];
+  # Key names for `backKey`: a copy of the session daemon's (the `keys!` list in hinteros-api
+  # session.rs, and the spellings KeyCombo's FromStr in hinteros-session keys/mod.rs also takes).
+  # The daemon refuses an app with another name; add a name here only when the daemon has it.
+  keyNames =
+    lib.stringToCharacters "abcdefghijklmnopqrstuvwxyz0123456789"
+    ++ map (n: "f${toString n}") (lib.range 1 12)
+    ++ [
+      "enter"
+      "escape"
+      "backspace"
+      "tab"
+      "space"
+      "delete"
+      "insert"
+      "home"
+      "end"
+      "page_up"
+      "page_down"
+      "up"
+      "down"
+      "left"
+      "right"
+      "minus"
+      "equal"
+      "left_bracket"
+      "right_bracket"
+      "backslash"
+      "semicolon"
+      "apostrophe"
+      "grave"
+      "comma"
+      "period"
+      "slash"
+      "caps_lock"
+      "context_menu"
+      "back"
+      "forward"
+      "refresh"
+      "play_pause"
+      "stop"
+      "next_track"
+      "previous_track"
+      "volume_up"
+      "volume_down"
+      "mute"
+      # Other spellings the daemon takes.
+      "esc"
+      "return"
+      "del"
+      "pageup"
+      "pagedown"
+    ];
+  keyModifiers = [
+    "shift"
+    "ctrl"
+    "control"
+    "alt"
+    "meta"
+    "super"
+    "win"
+  ];
+  # `[<modifier>+]...<key>`, any case, spaces around the parts allowed (as the daemon parses it).
+  isKeyCombo =
+    v:
+    isString v
+    && (
+      let
+        parts = map lib.trim (lib.splitString "+" (lib.toLower v));
+      in
+      elem (lib.last parts) keyNames && lib.all (m: elem m keyModifiers) (lib.init parts)
+    );
   # The one non-https kiosk URL: Firefox's own start page (the `firefox` app).
   kioskUrls = [ "about:home" ];
   kioskKeys = [
@@ -138,16 +209,22 @@ let
   idPattern = "[a-z0-9][a-z0-9-]{0,31}";
   isId = v: isString v && builtins.match idPattern v != null;
   isHttps = v: isString v && builtins.match "https://[^[:space:]]+" v != null;
+  # U+0080..U+009F, from JSON because Nix strings have no \u escape.
+  c1Controls = lib.genList (i: builtins.fromJSON ''"\u00${lib.toHexString (128 + i)}"'') 32;
   isText =
     max: v:
     isString v && v != "" && stringLength v <= max && builtins.match ".*[[:cntrl:]].*" v == null;
   # Like isText, but newlines are allowed (descriptions, notes).
   isLongText = max: v: isString v && v != "" && stringLength v <= max;
-  # Relative path below a profile's home: no leading / or ~, no empty, . or .. components.
+  # Relative path below a profile's home: no leading / or ~, no empty, . or .. components, no
+  # wildcards, brackets, backslashes or C1 controls (isText's [[:cntrl:]] sees only ASCII). At
+  # least as strict as the daemon's is_data_path (hinteros-api catalog.rs, char::is_control),
+  # which refuses the whole index for one path it does not accept.
   isHomePath =
     v:
     isText 200 v
-    && builtins.match "[/~].*|.*[*?$`].*" v == null
+    && builtins.match "[/~].*|.*[][*?$`\\\\].*" v == null
+    && !lib.any (c: lib.hasInfix c v) c1Controls
     && lib.all (c: c != "" && c != "." && c != "..") (lib.splitString "/" v);
   # Relative path below /var/lib (a service's state directory): the same rules as isHomePath,
   # and only letters, digits, `.`, `_`, `-` and `/`.
@@ -285,7 +362,7 @@ let
     dataPaths = {
       default = [ ];
       check = listOf isHomePath;
-      what = "a list of paths relative to a profile's home (no leading / or ~, no ., .. or empty components, no wildcards)";
+      what = "a list of paths relative to a profile's home (no leading / or ~, no ., .. or empty components, none of * ? [ ] \\ $ `)";
     };
     notes = {
       default = null;
@@ -426,7 +503,7 @@ let
               "retrieved"
               "text"
             ] (attrNames tm);
-            file = "${id}-${tm.version or ""}.txt";
+            suffix = "-${tm.version or ""}.txt";
           in
           lib.optional (unknownKeys != [ ]) "terms: unknown field(s) ${lib.concatStringsSep ", " unknownKeys}"
           ++ lib.optional (
@@ -443,11 +520,13 @@ let
           ) "terms.retrieved: the retrieval date, YYYY-MM-DD"
           ++ (
             if !isPath (tm.text or null) then
-              [ "terms.text: a path to the plain-text terms, ./terms/<id>-<version>.txt" ]
+              [ "terms.text: a path to the plain-text terms, ./terms/<name>-<version>.txt" ]
             else
-              lib.optional (
-                baseNameOf tm.text != file
-              ) "terms.text: the file must be named ${file} (<id>-<version>.txt)"
+              lib.optional
+                (
+                  !(lib.hasSuffix suffix (baseNameOf tm.text) && isId (lib.removeSuffix suffix (baseNameOf tm.text)))
+                )
+                "terms.text: the file must be named <name>${suffix}, <name> the id or a vendor name entries with the same terms share (as an id: a-z, 0-9, -)"
               ++ lib.optional (!builtins.pathExists tm.text) "terms.text: file does not exist"
           );
 
@@ -551,13 +630,36 @@ let
             ]
           ) "app.input: gamepad or keyboard"
           ++ lib.optional (appAttrs ? listed && !isBool appAttrs.listed) "app.listed: a bool"
+          ++ lib.optional (appAttrs ? order && !isInt appAttrs.order) "app.order: an integer"
+          # Only the list itself: its items may name packages, which are not available here.
+          ++ lib.optional (
+            appAttrs ? command && !(isList appAttrs.command && appAttrs.command != [ ])
+          ) "app.command: a non-empty list of strings"
+          ++ lib.optional (
+            kiosk ? userAgent && !isText 500 kiosk.userAgent
+          ) "app.kiosk.userAgent: a single-line string"
+          ++ lib.optional (
+            kiosk ? fullscreenOnly && !isBool kiosk.fullscreenOnly
+          ) "app.kiosk.fullscreenOnly: a bool"
+          # The session daemon refuses these for a gamepad app, and then ignores every app of the
+          # profile's env (config.rs, validate).
+          ++ lib.optional (
+            # backKey = null is the default (app-entries.nix: nullOr str), not a key.
+            ((appAttrs.backKey or null) != null || (kiosk.fullscreenOnly or false) == true)
+            && (appAttrs.input or "gamepad") != "keyboard"
+          ) "app: backKey and kiosk.fullscreenOnly need input = \"keyboard\""
+          ++
+            lib.optional ((appAttrs.backKey or null) != null && !isKeyCombo appAttrs.backKey)
+              "app.backKey: a key name with optional modifiers, e.g. \"escape\" or \"alt+left\" (the daemon's key names)"
           ++
             lib.optional
               (
                 # No input: the daemon's default, gamepad.
-                (appAttrs.input or "gamepad") == "gamepad" && full.sandbox && !(full.permissions ? gamepad)
+                (appAttrs.input or "gamepad") == "gamepad"
+                && full.sandbox
+                && (full.permissions.gamepad or null) != "required"
               )
-              "permissions.gamepad: required for input = \"gamepad\" or no input (the sandbox hides /dev/input)";
+              "permissions.gamepad: \"required\" for input = \"gamepad\" or no input (the sandbox hides /dev/input; the app has no other input)";
 
       serviceBadArgs = badArgs serviceArgs full.service;
       serviceAttrs = callStub full.service;
@@ -575,19 +677,39 @@ let
             bad = lib.subtractLists serviceKeys (attrNames serviceAttrs);
             systemd = serviceAttrs.systemd or { };
             badSystemd = lib.subtractLists [ "services" ] (attrNames systemd);
-            # `systemd.services.<own unit>`: a unit named after one of the module's own
-            # `services.<name>` (jellyfin, tailscale -> tailscaled).
+            # `systemd.services.<own unit>`: a unit named exactly after one of the module's own
+            # `services.<name>`, or that name with a `d` (jellyfin, tailscale -> tailscaled).
             owners = attrNames (serviceAttrs.services or { });
-            badUnits = lib.filter (u: !lib.any (o: lib.hasPrefix o u) owners) (
+            badUnits = lib.filter (u: !lib.any (o: u == o || u == "${o}d") owners) (
               attrNames (systemd.services or { })
             );
+            # The names below are read as written, so these must be plain attrsets, not
+            # mkIf/mkMerge/mkForce values (whose names are _type, content, ...).
+            isWrapped = v: isAttrs v && v ? _type;
+            wrapped =
+              lib.optional (isWrapped (serviceAttrs.services or null)) "services"
+              ++ lib.optional (isWrapped (serviceAttrs.systemd or null)) "systemd"
+              ++ lib.optional (isWrapped (systemd.services or null)) "systemd.services";
+            # Does a value set openFirewall, also inside mkIf/mkMerge/mkOverride/mkOrder?
+            setsOpenFirewall =
+              v:
+              isAttrs v
+              && (
+                if (v._type or null) == "merge" then
+                  lib.any setsOpenFirewall (v.contents or [ ])
+                else if v ? _type then
+                  setsOpenFirewall (v.content or null)
+                else
+                  v ? openFirewall
+              );
             # Open ports come from `ports` only: no module's own openFirewall, whatever its value.
-            openFw = lib.filter (
-              o: isAttrs serviceAttrs.services.${o} && serviceAttrs.services.${o} ? openFirewall
-            ) owners;
+            openFw = lib.filter (o: setsOpenFirewall serviceAttrs.services.${o}) owners;
           in
           lib.optional (bad != [ ])
             "service: top-level key(s) not allowed: ${lib.concatStringsSep ", " bad} (allowed: services, hardware, systemd.services.<own unit>; open ports with `ports`)"
+          ++
+            lib.optional (wrapped != [ ])
+              "service: ${lib.concatStringsSep ", " wrapped}: a plain attrset, not mkIf/mkMerge (put those inside services.<name>)"
           ++
             lib.optional (openFw != [ ])
               "service: services.${lib.concatStringsSep ", services." openFw}.openFirewall not allowed (open ports with `ports`)"
@@ -596,7 +718,7 @@ let
               "service: systemd.${lib.concatStringsSep ", systemd." badSystemd} not allowed (only systemd.services.<own unit>)"
           ++
             lib.optional (badUnits != [ ])
-              "service: systemd.services.${lib.concatStringsSep ", systemd.services." badUnits} is not the module's own unit (named after one of its services.<name>)";
+              "service: systemd.services.${lib.concatStringsSep ", systemd.services." badUnits} is not the module's own unit (<name> or <name>d for one of its services.<name>)";
 
       kindProblems =
         if isService then
@@ -608,6 +730,12 @@ let
           ++ lib.optional (e ? needsServices) "needsServices: only for apps (a service cannot need a service)"
           ++ lib.optional (e ? permissions) "permissions: only for apps"
           ++ lib.optional (e ? sandbox) "sandbox: only for apps"
+          ++ lib.optional (
+            e ? dataPaths
+          ) "dataPaths: only for apps (a service keeps its data in /var/lib, see stateDirs)"
+          ++ lib.optional (
+            (e.packages or null) == null
+          ) "packages: required for services (the licence checks and cache builds read it)"
           ++ lib.optional (
             fields.ports.check full.ports
             &&
@@ -697,8 +825,35 @@ let
         ++ map (d: "${id}: onIso but depends on ${d}, which is not onIso") (
           lib.filter (d: e.onIso && entries ? ${d} && !entries.${d}.onIso) e.depends
         )
+        # One document, one file: entries with the same terms url or file have the same terms,
+        # so a refresh cannot update one and leave the other behind.
+        ++
+          map
+            (o: "${id}: terms differ from ${o}'s, which has the same url or file (share one file and version)")
+            (
+              lib.filter (
+                o:
+                o != id
+                && e.terms != null
+                && entries.${o}.terms != null
+                && (
+                  entries.${o}.terms.url == e.terms.url
+                  || baseNameOf entries.${o}.terms.text == baseNameOf e.terms.text
+                )
+                && termsKey entries.${o}.terms != termsKey e.terms
+              ) (attrNames entries)
+            )
       ) entries
     );
+  termsKey = t: {
+    inherit (t)
+      title
+      version
+      url
+      retrieved
+      ;
+    file = baseNameOf t.text;
+  };
 
   # Fill defaults and derived fields. Only call on entries without problems (or for checks).
   normalize =
@@ -715,7 +870,9 @@ let
         }
         // e;
       appAttrs = callStub withDefaults.app;
-      sandbox = withDefaults.kind == "app" && withDefaults.status != "removed" && withDefaults.sandbox;
+      # The app has (or, for a tombstone, had) a sandbox home.
+      sandboxed = withDefaults.kind == "app" && withDefaults.sandbox;
+      sandbox = sandboxed && withDefaults.status != "removed";
       lic = {
         unfreePackages = [ ];
       }
@@ -725,8 +882,9 @@ let
     // {
       inherit id sandbox;
       license = lic;
-      # A sandboxed app's whole home is app data: "delete data" removes it too.
-      dataPaths = lib.unique (withDefaults.dataPaths ++ lib.optional sandbox (sandboxHome id));
+      # A sandboxed app's whole home is app data: "delete data" removes it too, also after the
+      # app is removed (a tombstone keeps it, so the data can still be deleted).
+      dataPaths = lib.unique (withDefaults.dataPaths ++ lib.optional sandboxed (sandboxHome id));
       # For the validator only, not in the index: web/native apps, or a service.
       type =
         if withDefaults.kind == "service" then
@@ -820,7 +978,8 @@ let
     );
 
   # Public, machine-readable view for the launcher's Store UI (schema/index.schema.json).
-  # Maintainer notes and the Nix functions stay out.
+  # Maintainer notes and the Nix functions stay out. A tombstone keeps its dataPaths: the box
+  # removes the app on the next update, but each profile's data stays until the user deletes it.
   indexEntry =
     e:
     if e.status == "removed" then
@@ -831,6 +990,7 @@ let
           name
           status
           statusReason
+          dataPaths
           ;
       }
     else
@@ -898,63 +1058,6 @@ let
       )
     );
 
-  # Views of a loaded catalog for the system repo.
-  appsOnlyOf = lib.filterAttrs (_: e: e.kind == "app");
-  servicesOf = lib.filterAttrs (_: e: e.kind == "service");
-
-  # The union of box features the given app ids need, sorted. Unknown ids throw: callers
-  # validate ids first, and a silent [] would drop a feature.
-  featuresOfIn =
-    catalog: ids:
-    lib.sort lib.lessThan (
-      lib.unique (
-        lib.concatMap (
-          id: (catalog.${id} or (throw "hinteros-catalog: unknown entry ${id}")).boxFeatures
-        ) ids
-      )
-    );
-
-  # The service ids the given app ids need, sorted and unique. The Store disables Install (red
-  # "needs the X server, the admin profile can install it in Server") while one is not installed,
-  # and the privileged service refuses the install. Unknown ids throw, as in featuresOfIn.
-  servicesNeededBy =
-    catalog: ids:
-    lib.sort lib.lessThan (
-      lib.unique (
-        lib.concatMap (
-          id: (catalog.${id} or (throw "hinteros-catalog: unknown entry ${id}")).needsServices
-        ) ids
-      )
-    );
-
-  # The installer's app step: ids of available apps with `starter` set, sorted. `offered` lists
-  # everything the installer shows (ticked ones included), `ticked` the pre-selected subset,
-  # `onIso` the ones that ship on the ISO (usable offline).
-  starterDefaultsOf =
-    catalog:
-    let
-      apps = lib.filter (e: e.kind == "app" && e.status == "available") (lib.attrValues catalog);
-      idsWhere = p: lib.sort lib.lessThan (map (e: e.id) (lib.filter p apps));
-    in
-    {
-      offered = idsWhere (e: e.starter != null);
-      ticked = idsWhere (e: e.starter == "ticked");
-      onIso = idsWhere (e: e.onIso);
-    };
-
-  # { "<id>" = { name, kind, status, statusReason }; }: cheap, package-free, evaluable for any
-  # revision of the catalog (update.check, state.nix id checks).
-  catalogIdsOf =
-    catalog:
-    lib.mapAttrs (_: e: {
-      inherit (e)
-        name
-        kind
-        status
-        statusReason
-        ;
-    }) catalog;
-
   mkIndex = catalog: {
     inherit indexVersion;
     entries = map indexEntry (lib.sort (a: b: a.id < b.id) (lib.attrValues catalog));
@@ -984,11 +1087,5 @@ in
     load
     mkIndex
     cacheableUnfreeOf
-    appsOnlyOf
-    servicesOf
-    featuresOfIn
-    servicesNeededBy
-    starterDefaultsOf
-    catalogIdsOf
     ;
 }

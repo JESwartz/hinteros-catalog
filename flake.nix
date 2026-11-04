@@ -24,7 +24,10 @@
       pkgs = nixpkgs.legacyPackages.${system};
       inherit (nixpkgs) lib;
       catalogLib = import ./lib { inherit lib; };
-      termsEntries = lib.filter (e: e.terms or null != null) (lib.attrValues self.catalog);
+      # Each terms file once: entries with the same document share one (Plex).
+      termsFiles = lib.unique (
+        map (e: e.terms.text) (lib.filter (e: e.terms or null != null) (lib.attrValues self.catalog))
+      );
       readmeEntries = lib.filter (e: e.readme or null != null) (lib.attrValues self.catalog);
     in
     {
@@ -33,17 +36,6 @@
         # Unfree package names allowed in the binary cache and the ISO build despite
         # `forbidUnfree`: unfree entries with `delivery = "download"` (nixpkgs-checked unfreeRedistributable).
         cacheableUnfree = catalogLib.cacheableUnfreeOf self.catalog;
-        # Only the apps / only the services of the catalog.
-        appsOnly = catalogLib.appsOnlyOf self.catalog;
-        services = catalogLib.servicesOf self.catalog;
-        # Union of box features the given app ids need (sorted); throws on unknown ids.
-        featuresOf = catalogLib.featuresOfIn self.catalog;
-        # Sorted service ids the given app ids need (needsServices); throws on unknown ids.
-        servicesNeededBy = catalogLib.servicesNeededBy self.catalog;
-        # The installer's app step: { offered; ticked; onIso; } as id lists.
-        starterDefaults = catalogLib.starterDefaultsOf self.catalog;
-        # { <id> = { name, kind, status, statusReason }; }, without evaluating any package.
-        catalogIds = catalogLib.catalogIdsOf self.catalog;
       };
 
       # Every entry, validated and normalized: { <id> = entry; }. Evaluating it throws with every
@@ -68,9 +60,7 @@
             ''
               mkdir -p $out/share/hinteros/terms $out/share/hinteros/readme
               jq --sort-keys . "$jsonPath" > $out/share/hinteros/catalog.json
-              ${lib.concatMapStringsSep "\n" (
-                e: "cp ${e.terms.text} $out/share/hinteros/terms/${baseNameOf e.terms.text}"
-              ) termsEntries}
+              ${lib.concatMapStringsSep "\n" (f: "cp ${f} $out/share/hinteros/terms/${baseNameOf f}") termsFiles}
               ${lib.concatMapStringsSep "\n" (
                 e: "cp ${e.readme.text} $out/share/hinteros/readme/${baseNameOf e.readme.text}"
               ) readmeEntries}
@@ -125,7 +115,7 @@
         };
       };
 
-      # Online check of every iconUrl, siteUrl and terms.url (`nix run .#check-icon-urls`); kept out
+      # Online check of every iconUrl, siteUrl, terms.url and readme.url (`nix run .#check-icon-urls`); kept out
       # of `nix flake check`, which stays offline. Run weekly by .forgejo/workflows/links.yml.
       apps.${system}.check-icon-urls = {
         type = "app";

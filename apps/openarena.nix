@@ -26,6 +26,9 @@
     desktopId = "OpenArena";
   };
 
+  # Without the sandbox: settings and downloaded maps (the ioquake3 home directory; with the
+  # sandbox it is in its home, listed automatically).
+  dataPaths = [ ".openarena" ];
   permissions = {
     # LAN games: finding and joining servers on the home network (online games work without it).
     lan = "optional";

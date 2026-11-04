@@ -20,8 +20,8 @@
   # Server plus its bundled web UI and ffmpeg; the library and metadata cache grow in /var/lib.
   sizeMiB = 600;
   icon = {
-    # Jellyfin's official branding repo, https://github.com/jellyfin/jellyfin-ux (branding/SVG/icon-transparent.svg). Square SVG. Checked 2026-10-06.
-    iconUrl = "https://raw.githubusercontent.com/jellyfin/jellyfin-ux/master/branding/SVG/icon-transparent.svg";
+    # Jellyfin's official branding repo, https://github.com/jellyfin/jellyfin-ux (branding/SVG/icon-transparent.svg). Square SVG, at the last commit that changed it. Checked 2026-10-06, pinned 2026-11-03.
+    iconUrl = "https://raw.githubusercontent.com/jellyfin/jellyfin-ux/9e27258e873f64edaa9c5955e753978975ed5589/branding/SVG/icon-transparent.svg";
     sha256 = "817c25b47442b192250448fe48cd5f265fe9183bc75aa12030bbe335495255d1";
   };
 

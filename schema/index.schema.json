@@ -26,7 +26,8 @@
       "maxLength": 200,
       "allOf": [
         { "pattern": "^[^/~]" },
-        { "not": { "pattern": "(^|/)(\\.\\.?)?(/|$)" } }
+        { "not": { "pattern": "(^|/)(\\.\\.?)?(/|$)" } },
+        { "not": { "pattern": "[\u0000-\u001f\u007f-\u009f*?$`\\[\\]\\\\]" } }
       ]
     },
     "Https": { "type": "string", "pattern": "^https://\\S+$" },
@@ -82,7 +83,7 @@
         "depends": { "type": "array", "items": { "$ref": "#/$defs/Id" } },
         "needsServices": {
           "type": "array",
-          "description": "Ids of kind=service entries this app needs. While one is not installed, show the app with red text (needs the X server; the admin profile can install it in Server) and disable Install. Always empty for services",
+          "description": "Ids of kind=service entries this app needs. Planned: while one is not installed, the Store disables Install and the privileged service refuses it. Not enforced by the 1.0 daemon. Always empty for services",
           "items": { "$ref": "#/$defs/Id" }
         },
         "conflicts": { "type": "array", "items": { "$ref": "#/$defs/Id" } },
@@ -176,7 +177,12 @@
         "kind": { "enum": ["app", "service"] },
         "name": { "type": "string", "minLength": 1, "maxLength": 40 },
         "status": { "const": "removed" },
-        "statusReason": { "type": "string", "minLength": 1, "maxLength": 200 }
+        "statusReason": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "dataPaths": {
+          "type": "array",
+          "description": "As for App: the removed app's data (its sandbox home included), which a profile can still delete. Missing: none",
+          "items": { "$ref": "#/$defs/HomePath" }
+        }
       }
     }
   }
