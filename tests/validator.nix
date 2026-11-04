@@ -59,6 +59,7 @@ let
     sizeMiB = 10;
     icon = { };
     service = _: { services.example.enable = true; };
+    packages = pkgs: [ pkgs.hello ];
   };
 
   problems = id: e: catalogLib.checkEntry id e;
@@ -1285,6 +1286,19 @@ let
         }
       );
       expected = true;
+    };
+    # Nothing deletes a service's dataPaths; without packages the licence checks see nothing.
+    testServiceDataPathsAndPackages = {
+      expr = [
+        (refuses "dataPaths: only for apps" (goodService // { dataPaths = [ ".config/x" ]; }))
+        (refuses "packages: required for services" (builtins.removeAttrs goodService [ "packages" ]))
+        (refuses "packages: required for services" (goodService // { packages = null; }))
+      ];
+      expected = [
+        true
+        true
+        true
+      ];
     };
     testServiceHasNoSandboxFields = {
       expr = [

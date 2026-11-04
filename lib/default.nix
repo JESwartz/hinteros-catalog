@@ -721,6 +721,10 @@ let
           ++ lib.optional (e ? needsServices) "needsServices: only for apps (a service cannot need a service)"
           ++ lib.optional (e ? permissions) "permissions: only for apps"
           ++ lib.optional (e ? sandbox) "sandbox: only for apps"
+          ++ lib.optional (e ? dataPaths) "dataPaths: only for apps (a service keeps its data in /var/lib, see stateDirs)"
+          ++ lib.optional (
+            (e.packages or null) == null
+          ) "packages: required for services (the licence checks and cache builds read it)"
           ++ lib.optional (
             fields.ports.check full.ports
             &&
