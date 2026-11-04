@@ -32,7 +32,7 @@ Flake outputs:
 | `catalogIndex` | The Store index as a Nix value |
 | `packages.x86_64-linux.index` | `$out/share/hinteros/catalog.json` (the index) `$out/share/hinteros/terms/*.txt` and `$out/share/hinteros/readme/*.md` (the vendor terms and READMEs it references, so the launcher shows them offline) |
 | `lib` | `load`, `validate`, `checkEntry`, `normalize`, `mkIndex`, the enums, `cacheableUnfree` (the unfree package names of entries with `delivery = "download"`, for the cache job and the `forbidUnfree` exception list; `cacheableUnfreeOf` takes a catalog). The system repo derives its own views (installer lists in `nixos/lib/app-ids.nix`, `lib.catalogIds`) from `catalog` |
-| `apps.x86_64-linux.check-icon-urls` | Online check of `iconUrl`, `siteUrl` and `terms.url` (see Icons) |
+| `apps.x86_64-linux.check-icon-urls` | Online check of `iconUrl`, `siteUrl`, `terms.url` and `readme.url` (see Icons) |
 | `checks` | formatting/lint, validator tests, index against its schema (v4), package and licence eval, NixOS eval of every box feature and service |
 
 ## Entry format (format 3)
@@ -108,7 +108,7 @@ assets over CDN hashes). Say in a comment where it came from and the date it was
 suitable official URL exists, leave `iconUrl` unset and say why; the fallbacks cover it. Set
 `sha256` to the file's hash: `curl -sSL <iconUrl> | sha256sum`; look at the file first.
 
-`nix run .#check-icon-urls` fetches every `iconUrl`, `siteUrl` and `terms.url` (HTTP 200; for
+`nix run .#check-icon-urls` fetches every `iconUrl`, `siteUrl`, `terms.url` and `readme.url` (HTTP 200; for
 `iconUrl` also an image content-type, at most 1 MiB, image magic bytes and the `sha256`), prints a table and
 exits non-zero on failures. It needs network, so it is not part of `nix flake check`; the
 scheduled `.forgejo/workflows/links.yml` runs it weekly.

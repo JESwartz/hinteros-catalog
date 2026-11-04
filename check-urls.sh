@@ -1,4 +1,4 @@
-# Online link check for `nix run .#check-icon-urls`: every icon.iconUrl, icon.siteUrl and terms.url
+# Online link check for `nix run .#check-icon-urls`: every icon.iconUrl, icon.siteUrl, terms.url and readme.url
 # of the catalog index (JSON on $1). iconUrl must answer 200 with an image content-type, at most
 # 1 MiB and a known image magic number (the daemon's rules), and have the entry's icon.sha256 (the
 # daemon refuses another file); the other URLs must answer 200.
@@ -12,7 +12,7 @@ tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 fail=0
 
-printf '%-6s %-14s %-9s %-5s %-24s %8s  %s\n' RESULT APP FIELD HTTP TYPE BYTES URL
+printf '%-6s %-14s %-10s %-5s %-24s %8s  %s\n' RESULT APP FIELD HTTP TYPE BYTES URL
 while IFS=$'\t' read -r app field url sha; do
   code=$(curl -sSL -m 30 --max-filesize $((max + 1)) -A "$ua" -o "$tmp/body" \
     -w '%{http_code}\t%{content_type}' "$url" 2>"$tmp/err") || true
@@ -38,13 +38,14 @@ while IFS=$'\t' read -r app field url sha; do
     [ "$got" = "$sha" ] || why="${why:+$why; }sha256 $got is not icon.sha256 ${sha:-(none)}"
   fi
   if [ -n "$why" ]; then res=FAIL; fail=1; else res=ok; fi
-  printf '%-6s %-14s %-9s %-5s %-24s %8s  %s\n' "$res" "$app" "$field" "$http" "${ctype:0:24}" "$size" "$url"
+  printf '%-6s %-14s %-10s %-5s %-24s %8s  %s\n' "$res" "$app" "$field" "$http" "${ctype:0:24}" "$size" "$url"
   [ -z "$why" ] || printf '       -> %s\n' "$why"
   rm -f "$tmp/body"
 done < <(jq -r '.entries[] | select(.status != "removed") | . as $a |
   ( (.icon.iconUrl // empty) | [$a.id, "iconUrl", ., ($a.icon.sha256 // "")] ),
   ( if .icon.siteUrl and ((.icon.firefoxProfile // false) | not) then [$a.id, "siteUrl", .icon.siteUrl] else empty end ),
-  ( (.terms.url // empty) | [$a.id, "terms.url", .] ) | @tsv' "$index")
+  ( (.terms.url // empty) | [$a.id, "terms.url", .] ),
+  ( (.readme.url // empty) | [$a.id, "readme.url", .] ) | @tsv' "$index")
 
 if [ "$fail" -ne 0 ]; then echo "check-icon-urls: FAILED" >&2; exit 1; fi
 echo "check-icon-urls: all ok"

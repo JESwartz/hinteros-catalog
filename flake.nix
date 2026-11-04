@@ -114,7 +114,7 @@
         };
       };
 
-      # Online check of every iconUrl, siteUrl and terms.url (`nix run .#check-icon-urls`); kept out
+      # Online check of every iconUrl, siteUrl, terms.url and readme.url (`nix run .#check-icon-urls`); kept out
       # of `nix flake check`, which stays offline. Run weekly by .forgejo/workflows/links.yml.
       apps.${system}.check-icon-urls = {
         type = "app";
