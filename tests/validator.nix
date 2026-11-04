@@ -1106,8 +1106,22 @@ let
       expr = refuses "sandbox: must be a bool" (good // { sandbox = "no"; });
       expected = true;
     };
+    # Optional would let the user switch off the app's only input.
+    testGamepadInputNeedsRequired = {
+      expr = refuses "permissions.gamepad: \"required\" for input" (
+        good
+        // {
+          permissions.gamepad = "optional";
+          app = { pkgs, ... }: {
+            package = pkgs.hello;
+            input = "gamepad";
+          };
+        }
+      );
+      expected = true;
+    };
     testGamepadInputNeedsPermission = {
-      expr = refuses "permissions.gamepad: required for input" (
+      expr = refuses "permissions.gamepad: \"required\" for input" (
         good
         // {
           app = { pkgs, ... }: {
@@ -1244,7 +1258,7 @@ let
       expected = lib.genList (_: 1) 5;
     };
     testNoInputNeedsPermission = {
-      expr = refuses "permissions.gamepad: required for input" (
+      expr = refuses "permissions.gamepad: \"required\" for input" (
         good // { app = { pkgs, ... }: { package = pkgs.hello; }; }
       );
       expected = true;
