@@ -668,19 +668,39 @@ let
             bad = lib.subtractLists serviceKeys (attrNames serviceAttrs);
             systemd = serviceAttrs.systemd or { };
             badSystemd = lib.subtractLists [ "services" ] (attrNames systemd);
-            # `systemd.services.<own unit>`: a unit named after one of the module's own
-            # `services.<name>` (jellyfin, tailscale -> tailscaled).
+            # `systemd.services.<own unit>`: a unit named exactly after one of the module's own
+            # `services.<name>`, or that name with a `d` (jellyfin, tailscale -> tailscaled).
             owners = attrNames (serviceAttrs.services or { });
-            badUnits = lib.filter (u: !lib.any (o: lib.hasPrefix o u) owners) (
+            badUnits = lib.filter (u: !lib.any (o: u == o || u == "${o}d") owners) (
               attrNames (systemd.services or { })
             );
+            # The names below are read as written, so these must be plain attrsets, not
+            # mkIf/mkMerge/mkForce values (whose names are _type, content, ...).
+            isWrapped = v: isAttrs v && v ? _type;
+            wrapped =
+              lib.optional (isWrapped (serviceAttrs.services or null)) "services"
+              ++ lib.optional (isWrapped (serviceAttrs.systemd or null)) "systemd"
+              ++ lib.optional (isWrapped (systemd.services or null)) "systemd.services";
+            # Does a value set openFirewall, also inside mkIf/mkMerge/mkOverride/mkOrder?
+            setsOpenFirewall =
+              v:
+              isAttrs v
+              && (
+                if (v._type or null) == "merge" then
+                  lib.any setsOpenFirewall (v.contents or [ ])
+                else if v ? _type then
+                  setsOpenFirewall (v.content or null)
+                else
+                  v ? openFirewall
+              );
             # Open ports come from `ports` only: no module's own openFirewall, whatever its value.
-            openFw = lib.filter (
-              o: isAttrs serviceAttrs.services.${o} && serviceAttrs.services.${o} ? openFirewall
-            ) owners;
+            openFw = lib.filter (o: setsOpenFirewall serviceAttrs.services.${o}) owners;
           in
           lib.optional (bad != [ ])
             "service: top-level key(s) not allowed: ${lib.concatStringsSep ", " bad} (allowed: services, hardware, systemd.services.<own unit>; open ports with `ports`)"
+          ++
+            lib.optional (wrapped != [ ])
+              "service: ${lib.concatStringsSep ", " wrapped}: a plain attrset, not mkIf/mkMerge (put those inside services.<name>)"
           ++
             lib.optional (openFw != [ ])
               "service: services.${lib.concatStringsSep ", services." openFw}.openFirewall not allowed (open ports with `ports`)"
@@ -689,7 +709,7 @@ let
               "service: systemd.${lib.concatStringsSep ", systemd." badSystemd} not allowed (only systemd.services.<own unit>)"
           ++
             lib.optional (badUnits != [ ])
-              "service: systemd.services.${lib.concatStringsSep ", systemd.services." badUnits} is not the module's own unit (named after one of its services.<name>)";
+              "service: systemd.services.${lib.concatStringsSep ", systemd.services." badUnits} is not the module's own unit (<name> or <name>d for one of its services.<name>)";
 
       kindProblems =
         if isService then

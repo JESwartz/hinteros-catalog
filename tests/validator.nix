@@ -641,7 +641,7 @@ let
             services.example.enable = true;
             hardware.bluetooth.enable = true;
             systemd.services.example.serviceConfig.Nice = 5;
-            systemd.services.example-worker.serviceConfig.Nice = 5;
+            systemd.services.exampled.serviceConfig.Nice = 5;
           };
         }
       );
@@ -816,6 +816,63 @@ let
         }
       );
       expected = true;
+    };
+    # Only <name> and <name>d: `services.s = { }` does not own every unit that starts with s.
+    testServiceOwnUnitExact = {
+      expr =
+        map
+          (
+            u:
+            refuses "systemd.services.${u} is not the module's own unit" (
+              goodService
+              // {
+                service = _: {
+                  services.s.enable = true;
+                  systemd.services.${u}.enable = false;
+                };
+              }
+            )
+          )
+          [
+            "sshd"
+            "s-worker"
+            "systemd-logind"
+          ];
+      expected = lib.genList (_: true) 3;
+    };
+    # openFirewall inside mkIf/mkMerge/mkForce is still refused, and services/systemd must be
+    # plain attrsets (the validator reads their names).
+    testServiceOpenFirewallWrapped = {
+      expr =
+        map
+          (
+            v:
+            refuses "services.example.openFirewall not allowed" (
+              goodService // { service = { lib, ... }: { services.example = v lib; }; }
+            )
+          )
+          [
+            (lib: lib.mkIf true { openFirewall = true; })
+            (lib: lib.mkMerge [ { enable = true; } (lib.mkIf true { openFirewall = true; }) ])
+            (lib: lib.mkForce { openFirewall = true; })
+          ];
+      expected = lib.genList (_: true) 3;
+    };
+    testServiceNoWrappedNamespaces = {
+      expr =
+        map (m: refuses "a plain attrset, not mkIf/mkMerge" (goodService // { service = { lib, ... }: m lib; }))
+          [
+            (lib: { services = lib.mkIf true { example.openFirewall = true; }; })
+            (lib: {
+              services.example.enable = true;
+              systemd = lib.mkMerge [ { services.example.enable = true; } ];
+            })
+            (lib: {
+              services.example.enable = true;
+              systemd.services = lib.mkIf true { sshd.enable = false; };
+            })
+          ];
+      expected = lib.genList (_: true) 3;
     };
     testServiceSystemdOnlyServices = {
       expr = refuses "systemd.timers not allowed" (
