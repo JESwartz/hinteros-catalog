@@ -815,6 +815,25 @@ let
       ];
       expected = lib.genList (_: true) 7;
     };
+    testStateDirsLeaveSystemStateAlone = {
+      expr =
+        map (d: refuses "stateDirs: not system state" (goodService // { stateDirs = [ d ]; })) [
+          "hinteros"
+          "hinteros/services"
+          "hinteros/services/other"
+          "hinteros/profiles.json"
+          "nixos"
+          "systemd/timers"
+          "private"
+        ]
+        ++ map (d: refuses "stateDirs: not system state" (goodService // { stateDirs = [ d ]; })) [
+          "hinteros/services/example"
+          "hinteros/services/example/cache"
+          "hinteros-thing"
+          "jellyfin"
+        ];
+      expected = lib.genList (_: true) 7 ++ lib.genList (_: false) 4;
+    };
     testServiceFieldsOnlyForServices = {
       expr = [
         (refuses "ports: only for services" (
