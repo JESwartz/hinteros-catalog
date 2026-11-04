@@ -209,18 +209,22 @@ let
   idPattern = "[a-z0-9][a-z0-9-]{0,31}";
   isId = v: isString v && builtins.match idPattern v != null;
   isHttps = v: isString v && builtins.match "https://[^[:space:]]+" v != null;
+  # U+0080..U+009F, from JSON because Nix strings have no \u escape.
+  c1Controls = lib.genList (i: builtins.fromJSON ''"\u00${lib.toHexString (128 + i)}"'') 32;
   isText =
     max: v:
     isString v && v != "" && stringLength v <= max && builtins.match ".*[[:cntrl:]].*" v == null;
   # Like isText, but newlines are allowed (descriptions, notes).
   isLongText = max: v: isString v && v != "" && stringLength v <= max;
   # Relative path below a profile's home: no leading / or ~, no empty, . or .. components, no
-  # wildcards, brackets or backslashes. At least as strict as the daemon's is_data_path
-  # (hinteros-api catalog.rs), which refuses the whole index for one path it does not accept.
+  # wildcards, brackets, backslashes or C1 controls (isText's [[:cntrl:]] sees only ASCII). At
+  # least as strict as the daemon's is_data_path (hinteros-api catalog.rs, char::is_control),
+  # which refuses the whole index for one path it does not accept.
   isHomePath =
     v:
     isText 200 v
     && builtins.match "[/~].*|.*[][*?$`\\\\].*" v == null
+    && !lib.any (c: lib.hasInfix c v) c1Controls
     && lib.all (c: c != "" && c != "." && c != "..") (lib.splitString "/" v);
   # Relative path below /var/lib (a service's state directory): the same rules as isHomePath,
   # and only letters, digits, `.`, `_`, `-` and `/`.

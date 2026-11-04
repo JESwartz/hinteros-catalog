@@ -27,7 +27,7 @@
       "allOf": [
         { "pattern": "^[^/~]" },
         { "not": { "pattern": "(^|/)(\\.\\.?)?(/|$)" } },
-        { "not": { "pattern": "[\u0000-\u001f\u007f*?$`\\[\\]\\\\]" } }
+        { "not": { "pattern": "[\u0000-\u001f\u007f-\u009f*?$`\\[\\]\\\\]" } }
       ]
     },
     "Https": { "type": "string", "pattern": "^https://\\S+$" },

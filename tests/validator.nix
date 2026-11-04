@@ -390,8 +390,10 @@ let
         ".config/a]b"
         ".config\\Foo"
         ".config/a\tb"
+        # A C1 control (U+0085), which [[:cntrl:]] does not see.
+        (builtins.fromJSON ''".config/a\u0085b"'')
       ];
-      expected = lib.genList (_: true) 13;
+      expected = lib.genList (_: true) 14;
     };
     testKioskNeedsProfileDataPath = {
       expr = refuses "dataPaths: a kiosk (web) app must list its Firefox profile" (
