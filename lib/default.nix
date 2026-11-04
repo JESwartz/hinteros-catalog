@@ -93,6 +93,77 @@ let
     "order"
     "listed"
   ];
+  # Key names for `backKey`: a copy of the session daemon's (the `keys!` list in hinteros-api
+  # session.rs, and the spellings KeyCombo's FromStr in hinteros-session keys/mod.rs also takes).
+  # The daemon refuses an app with another name; add a name here only when the daemon has it.
+  keyNames =
+    lib.stringToCharacters "abcdefghijklmnopqrstuvwxyz0123456789"
+    ++ map (n: "f${toString n}") (lib.range 1 12)
+    ++ [
+      "enter"
+      "escape"
+      "backspace"
+      "tab"
+      "space"
+      "delete"
+      "insert"
+      "home"
+      "end"
+      "page_up"
+      "page_down"
+      "up"
+      "down"
+      "left"
+      "right"
+      "minus"
+      "equal"
+      "left_bracket"
+      "right_bracket"
+      "backslash"
+      "semicolon"
+      "apostrophe"
+      "grave"
+      "comma"
+      "period"
+      "slash"
+      "caps_lock"
+      "context_menu"
+      "back"
+      "forward"
+      "refresh"
+      "play_pause"
+      "stop"
+      "next_track"
+      "previous_track"
+      "volume_up"
+      "volume_down"
+      "mute"
+      # Other spellings the daemon takes.
+      "esc"
+      "return"
+      "del"
+      "pageup"
+      "pagedown"
+    ];
+  keyModifiers = [
+    "shift"
+    "ctrl"
+    "control"
+    "alt"
+    "meta"
+    "super"
+    "win"
+  ];
+  # `[<modifier>+]...<key>`, any case, spaces around the parts allowed (as the daemon parses it).
+  isKeyCombo =
+    v:
+    isString v
+    && (
+      let
+        parts = map lib.trim (lib.splitString "+" (lib.toLower v));
+      in
+      elem (lib.last parts) keyNames && lib.all (m: elem m keyModifiers) (lib.init parts)
+    );
   # The one non-https kiosk URL: Firefox's own start page (the `firefox` app).
   kioskUrls = [ "about:home" ];
   kioskKeys = [
@@ -553,6 +624,26 @@ let
             ]
           ) "app.input: gamepad or keyboard"
           ++ lib.optional (appAttrs ? listed && !isBool appAttrs.listed) "app.listed: a bool"
+          ++ lib.optional (appAttrs ? order && !isInt appAttrs.order) "app.order: an integer"
+          # Only the list itself: its items may name packages, which are not available here.
+          ++ lib.optional (
+            appAttrs ? command && !(isList appAttrs.command && appAttrs.command != [ ])
+          ) "app.command: a non-empty list of strings"
+          ++ lib.optional (
+            kiosk ? userAgent && !isText 500 kiosk.userAgent
+          ) "app.kiosk.userAgent: a single-line string"
+          ++ lib.optional (
+            kiosk ? fullscreenOnly && !isBool kiosk.fullscreenOnly
+          ) "app.kiosk.fullscreenOnly: a bool"
+          # The session daemon refuses these for a gamepad app, and then ignores every app of the
+          # profile's env (config.rs, validate).
+          ++ lib.optional (
+            (appAttrs ? backKey || (kiosk.fullscreenOnly or false) == true)
+            && (appAttrs.input or "gamepad") != "keyboard"
+          ) "app: backKey and kiosk.fullscreenOnly need input = \"keyboard\""
+          ++ lib.optional (
+            appAttrs ? backKey && !isKeyCombo appAttrs.backKey
+          ) "app.backKey: a key name with optional modifiers, e.g. \"escape\" or \"alt+left\" (the daemon's key names)"
           ++
             lib.optional
               (

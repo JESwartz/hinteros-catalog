@@ -1149,6 +1149,131 @@ let
       );
       expected = true;
     };
+    # The session daemon refuses these, and then drops every app of the profile's env.
+    testBackKeyNeedsKeyboard = {
+      expr =
+        map
+          (
+            a:
+            refuses "backKey and kiosk.fullscreenOnly need input = \"keyboard\"" (
+              good
+              // {
+                permissions.gamepad = "required";
+                dataPaths = [ ".local/share/hinteros/firefox/example" ];
+                app = _: a;
+              }
+            )
+          )
+          [
+            {
+              command = [ "x" ];
+              backKey = "escape";
+            }
+            {
+              command = [ "x" ];
+              input = "gamepad";
+              backKey = "escape";
+            }
+            {
+              kiosk = {
+                url = "https://example.org";
+                fullscreenOnly = true;
+              };
+            }
+          ];
+      expected = [
+        true
+        true
+        true
+      ];
+    };
+    testBackKeyNames = {
+      expr =
+        map
+          (
+            k:
+            problems "example" (
+              good
+              // {
+                app = _: {
+                  command = [ "x" ];
+                  input = "keyboard";
+                  backKey = k;
+                };
+              }
+            )
+          )
+          [
+            "escape"
+            "Esc"
+            "alt+left"
+            "ctrl + shift + f5"
+            "backspace"
+          ];
+      expected = lib.genList (_: [ ]) 5;
+    };
+    testBackKeyUnknownName = {
+      expr =
+        map
+          (
+            k:
+            refuses "app.backKey: a key name" (
+              good
+              // {
+                app = _: {
+                  command = [ "x" ];
+                  input = "keyboard";
+                  backKey = k;
+                };
+              }
+            )
+          )
+          [
+            "escap"
+            "hyper+a"
+            "alt+"
+            ""
+            42
+          ];
+      expected = lib.genList (_: true) 5;
+    };
+    testAppValueTypes = {
+      expr =
+        map
+          (
+            a:
+            lib.length (
+              problems "example" (
+                good
+                // {
+                  dataPaths = [ ".local/share/hinteros/firefox/example" ];
+                  app = _: { input = "keyboard"; } // a;
+                }
+              )
+            )
+          )
+          [
+            {
+              command = [ "x" ];
+              order = "1";
+            }
+            { command = [ ]; }
+            { command = "x"; }
+            {
+              kiosk = {
+                url = "https://example.org";
+                userAgent = "a\nb";
+              };
+            }
+            {
+              kiosk = {
+                url = "https://example.org";
+                fullscreenOnly = "yes";
+              };
+            }
+          ];
+      expected = lib.genList (_: 1) 5;
+    };
     testNoInputNeedsPermission = {
       expr = refuses "permissions.gamepad: required for input" (
         good // { app = { pkgs, ... }: { package = pkgs.hello; }; }
