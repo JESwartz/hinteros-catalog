@@ -878,14 +878,21 @@ let
           )
           [
             (lib: lib.mkIf true { openFirewall = true; })
-            (lib: lib.mkMerge [ { enable = true; } (lib.mkIf true { openFirewall = true; }) ])
+            (
+              lib:
+              lib.mkMerge [
+                { enable = true; }
+                (lib.mkIf true { openFirewall = true; })
+              ]
+            )
             (lib: lib.mkForce { openFirewall = true; })
           ];
       expected = lib.genList (_: true) 3;
     };
     testServiceNoWrappedNamespaces = {
       expr =
-        map (m: refuses "a plain attrset, not mkIf/mkMerge" (goodService // { service = { lib, ... }: m lib; }))
+        map
+          (m: refuses "a plain attrset, not mkIf/mkMerge" (goodService // { service = { lib, ... }: m lib; }))
           [
             (lib: { services = lib.mkIf true { example.openFirewall = true; }; })
             (lib: {
@@ -1413,12 +1420,14 @@ let
         in
         {
           problems = problems "old" (tomb // { dataPaths = [ ".config/old" ]; });
-          index = map (e: e.dataPaths) (catalogLib.mkIndex {
-            old = catalogLib.normalize "old" (tomb // { dataPaths = [ ".config/old" ]; });
-            unsandboxed = catalogLib.normalize "unsandboxed" (tomb // { sandbox = false; });
-            svc = catalogLib.normalize "svc" (tomb // { kind = "service"; });
-          }).entries;
-          sandbox = (catalogLib.normalize "old" tomb).sandbox;
+          index =
+            map (e: e.dataPaths)
+              (catalogLib.mkIndex {
+                old = catalogLib.normalize "old" (tomb // { dataPaths = [ ".config/old" ]; });
+                unsandboxed = catalogLib.normalize "unsandboxed" (tomb // { sandbox = false; });
+                svc = catalogLib.normalize "svc" (tomb // { kind = "service"; });
+              }).entries;
+          inherit (catalogLib.normalize "old" tomb) sandbox;
         };
       expected = {
         problems = [ ];

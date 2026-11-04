@@ -518,9 +518,11 @@ let
             if !isPath (tm.text or null) then
               [ "terms.text: a path to the plain-text terms, ./terms/<name>-<version>.txt" ]
             else
-              lib.optional (
-                !(lib.hasSuffix suffix (baseNameOf tm.text) && isId (lib.removeSuffix suffix (baseNameOf tm.text)))
-              ) "terms.text: the file must be named <name>${suffix}, <name> the id or a vendor name entries with the same terms share (as an id: a-z, 0-9, -)"
+              lib.optional
+                (
+                  !(lib.hasSuffix suffix (baseNameOf tm.text) && isId (lib.removeSuffix suffix (baseNameOf tm.text)))
+                )
+                "terms.text: the file must be named <name>${suffix}, <name> the id or a vendor name entries with the same terms share (as an id: a-z, 0-9, -)"
               ++ lib.optional (!builtins.pathExists tm.text) "terms.text: file does not exist"
           );
 
@@ -641,14 +643,16 @@ let
             (appAttrs ? backKey || (kiosk.fullscreenOnly or false) == true)
             && (appAttrs.input or "gamepad") != "keyboard"
           ) "app: backKey and kiosk.fullscreenOnly need input = \"keyboard\""
-          ++ lib.optional (
-            appAttrs ? backKey && !isKeyCombo appAttrs.backKey
-          ) "app.backKey: a key name with optional modifiers, e.g. \"escape\" or \"alt+left\" (the daemon's key names)"
+          ++
+            lib.optional (appAttrs ? backKey && !isKeyCombo appAttrs.backKey)
+              "app.backKey: a key name with optional modifiers, e.g. \"escape\" or \"alt+left\" (the daemon's key names)"
           ++
             lib.optional
               (
                 # No input: the daemon's default, gamepad.
-                (appAttrs.input or "gamepad") == "gamepad" && full.sandbox && (full.permissions.gamepad or null) != "required"
+                (appAttrs.input or "gamepad") == "gamepad"
+                && full.sandbox
+                && (full.permissions.gamepad or null) != "required"
               )
               "permissions.gamepad: \"required\" for input = \"gamepad\" or no input (the sandbox hides /dev/input; the app has no other input)";
 
@@ -721,7 +725,9 @@ let
           ++ lib.optional (e ? needsServices) "needsServices: only for apps (a service cannot need a service)"
           ++ lib.optional (e ? permissions) "permissions: only for apps"
           ++ lib.optional (e ? sandbox) "sandbox: only for apps"
-          ++ lib.optional (e ? dataPaths) "dataPaths: only for apps (a service keeps its data in /var/lib, see stateDirs)"
+          ++ lib.optional (
+            e ? dataPaths
+          ) "dataPaths: only for apps (a service keeps its data in /var/lib, see stateDirs)"
           ++ lib.optional (
             (e.packages or null) == null
           ) "packages: required for services (the licence checks and cache builds read it)"
@@ -816,19 +822,22 @@ let
         )
         # One document, one file: entries with the same terms url or file have the same terms,
         # so a refresh cannot update one and leave the other behind.
-        ++ map (o: "${id}: terms differ from ${o}'s, which has the same url or file (share one file and version)") (
-          lib.filter (
-            o:
-            o != id
-            && e.terms != null
-            && entries.${o}.terms != null
-            && (
-              entries.${o}.terms.url == e.terms.url
-              || baseNameOf entries.${o}.terms.text == baseNameOf e.terms.text
+        ++
+          map
+            (o: "${id}: terms differ from ${o}'s, which has the same url or file (share one file and version)")
+            (
+              lib.filter (
+                o:
+                o != id
+                && e.terms != null
+                && entries.${o}.terms != null
+                && (
+                  entries.${o}.terms.url == e.terms.url
+                  || baseNameOf entries.${o}.terms.text == baseNameOf e.terms.text
+                )
+                && termsKey entries.${o}.terms != termsKey e.terms
+              ) (attrNames entries)
             )
-            && termsKey entries.${o}.terms != termsKey e.terms
-          ) (attrNames entries)
-        )
       ) entries
     );
   termsKey = t: {

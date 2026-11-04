@@ -60,9 +60,7 @@
             ''
               mkdir -p $out/share/hinteros/terms $out/share/hinteros/readme
               jq --sort-keys . "$jsonPath" > $out/share/hinteros/catalog.json
-              ${lib.concatMapStringsSep "\n" (
-                f: "cp ${f} $out/share/hinteros/terms/${baseNameOf f}"
-              ) termsFiles}
+              ${lib.concatMapStringsSep "\n" (f: "cp ${f} $out/share/hinteros/terms/${baseNameOf f}") termsFiles}
               ${lib.concatMapStringsSep "\n" (
                 e: "cp ${e.readme.text} $out/share/hinteros/readme/${baseNameOf e.readme.text}"
               ) readmeEntries}
