@@ -717,7 +717,9 @@ let
         }
         // e;
       appAttrs = callStub withDefaults.app;
-      sandbox = withDefaults.kind == "app" && withDefaults.status != "removed" && withDefaults.sandbox;
+      # The app has (or, for a tombstone, had) a sandbox home.
+      sandboxed = withDefaults.kind == "app" && withDefaults.sandbox;
+      sandbox = sandboxed && withDefaults.status != "removed";
       lic = {
         unfreePackages = [ ];
       }
@@ -727,8 +729,9 @@ let
     // {
       inherit id sandbox;
       license = lic;
-      # A sandboxed app's whole home is app data: "delete data" removes it too.
-      dataPaths = lib.unique (withDefaults.dataPaths ++ lib.optional sandbox (sandboxHome id));
+      # A sandboxed app's whole home is app data: "delete data" removes it too, also after the
+      # app is removed (a tombstone keeps it, so the data can still be deleted).
+      dataPaths = lib.unique (withDefaults.dataPaths ++ lib.optional sandboxed (sandboxHome id));
       # For the validator only, not in the index: web/native apps, or a service.
       type =
         if withDefaults.kind == "service" then
@@ -822,7 +825,8 @@ let
     );
 
   # Public, machine-readable view for the launcher's Store UI (schema/index.schema.json).
-  # Maintainer notes and the Nix functions stay out.
+  # Maintainer notes and the Nix functions stay out. A tombstone keeps its dataPaths: the box
+  # removes the app on the next update, but each profile's data stays until the user deletes it.
   indexEntry =
     e:
     if e.status == "removed" then
@@ -833,6 +837,7 @@ let
           name
           status
           statusReason
+          dataPaths
           ;
       }
     else

@@ -134,10 +134,14 @@ file with a tombstone once it can no longer be built:
   name = "Old app";
   status = "removed";
   statusReason = "Discontinued by its developer.";
+  # Keep the app's dataPaths (and `sandbox = false` if it had it), so profiles can still delete its data.
+  dataPaths = [ ".config/old-app" ];
 }
 ```
 
-Boxes that have a removed app lose it on their next update, and the update screen says so.
+Boxes that have a removed app lose it on their next update, and the update screen says so. The
+app's data stays in each profile's home: the tombstone's index entry keeps `dataPaths`, with the
+sandbox home of an app that had one.
 
 ## Adding an app or a service
 

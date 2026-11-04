@@ -1253,6 +1253,40 @@ let
       };
       expected = [ ];
     };
+    # The index of a tombstone keeps its data paths and the sandbox home, so profiles can still
+    # delete the data after the update removes the app.
+    testTombstoneKeepsDataPaths = {
+      expr =
+        let
+          tomb = {
+            format = 3;
+            name = "Old app";
+            status = "removed";
+            statusReason = "Discontinued upstream.";
+          };
+        in
+        {
+          problems = problems "old" (tomb // { dataPaths = [ ".config/old" ]; });
+          index = map (e: e.dataPaths) (catalogLib.mkIndex {
+            old = catalogLib.normalize "old" (tomb // { dataPaths = [ ".config/old" ]; });
+            unsandboxed = catalogLib.normalize "unsandboxed" (tomb // { sandbox = false; });
+            svc = catalogLib.normalize "svc" (tomb // { kind = "service"; });
+          }).entries;
+          sandbox = (catalogLib.normalize "old" tomb).sandbox;
+        };
+      expected = {
+        problems = [ ];
+        index = [
+          [
+            ".config/old"
+            ".local/share/hinteros/sandbox/old"
+          ]
+          [ ]
+          [ ]
+        ];
+        sandbox = false;
+      };
+    };
     testTombstoneHasNoModule = {
       expr = refuses "a removed entry has no app or service" {
         format = 3;

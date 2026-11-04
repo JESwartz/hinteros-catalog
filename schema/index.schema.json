@@ -177,7 +177,12 @@
         "kind": { "enum": ["app", "service"] },
         "name": { "type": "string", "minLength": 1, "maxLength": 40 },
         "status": { "const": "removed" },
-        "statusReason": { "type": "string", "minLength": 1, "maxLength": 200 }
+        "statusReason": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "dataPaths": {
+          "type": "array",
+          "description": "As for App: the removed app's data (its sandbox home included), which a profile can still delete. Missing: none",
+          "items": { "$ref": "#/$defs/HomePath" }
+        }
       }
     }
   }
