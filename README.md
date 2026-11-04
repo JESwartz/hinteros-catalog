@@ -172,8 +172,10 @@ with `boxFeatures`, not a service.
      English), no marketing. They describe the app or service only: what it is and what it offers.
      No advice on when to install it, no account or subscription notes, no install, DRM,
      resolution or Linux-support notes and no implementation details: those go in comments.
-4. Merge, then bump `hinteros-catalog` in the system repo's `flake.lock` on `beta`. CI builds and
-   caches every free entry and every unfree entry with `delivery = "download"`; boxes on `beta` see the app after their next update.
+4. Merge, then bump `hinteros-catalog` in the system repo's `flake.lock` on `main` and release it
+   with `nix run .#promote` (main to beta; `beta` and `stable` take only signed release commits).
+   Boxes on `beta` see the app after their next update. There is no HinterOS binary cache yet
+   (`hinteros.cache.enable` is off by default): what cache.nixos.org does not have, the box builds.
 
 ## Refreshing vendor terms
 
