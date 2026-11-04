@@ -16,7 +16,7 @@ License: GPL-3.0-only, except the vendor terms in `apps/terms/`, which belong to
 
 ```
 apps/<id>.nix              one entry per app or service (format 3, below)
-apps/terms/<id>-<version>.txt   full vendor terms, plain text, referenced by entries
+apps/terms/<name>-<version>.txt full vendor terms, plain text, referenced by entries
 apps/readme/<id>.md        upstream READMEs, Markdown, referenced by entries
 lib/default.nix            the format: validator, normalizer, index generator (needs only lib)
 schema/index.schema.json   JSON Schema of the generated Store index
@@ -72,7 +72,7 @@ M10); it is never in the Store. See [How to add an app](#adding-an-app-or-a-serv
 | `needsServices` | no (apps) | Ids of `kind = "service"` entries the app needs (e.g. `[ "jellyfin-server" ]`); the validator refuses unknown ids, apps, removed entries, and the field on a service. Never installed with the app. In the index, but not enforced yet: the daemon parses it, and neither the Store nor the privileged service checks it, so an app with `needsServices` installs like any other. Do not rely on it until the daemon refuses the install while a needed service is off. An app's `depends` stays app-to-app |
 | `onIso` | no (apps) | Its closure ships on the ISO. The free web (kiosk) apps and Jellyfin set it. An offline install offers only the `onIso` apps that also have `starter` (YouTube, Jellyfin, Firefox); the others are on the ISO but only in the Store. Free apps only; its `depends` must be `onIso` too |
 | `delivery` | no (unfree entries) | `"build"` (the default for unfree entries): fetched from the vendor and built on the box during install. `"download"`: only for an unfree entry whose unfree packages are all `unfreeRedistributable` in nixpkgs (free licences beside it are fine): CI builds it, the binary cache serves it and the install is a download like a free app. Checked against nixpkgs `meta.license` by `tests/packages.nix`. Free entries are always cached and must not set it (their `delivery` is always `"download"`). Names of `"download"` entries go into `lib.cacheableUnfree` |
-| `terms` | unfree entries | The vendor's full terms, shown in full in the install dialog before the user accepts: `{ title; version; url; retrieved; text; }`. `version` is the vendor's version or revision date (the box records which version each profile accepted), `retrieved` the date the text was copied (`YYYY-MM-DD`), `text` a plain UTF-8 file `./terms/<id>-<version>.txt`. The index carries title, version, url, retrieved and the file name `terms/<id>-<version>.txt`; the index package installs the files next to `catalog.json` |
+| `terms` | unfree entries | The vendor's full terms, shown in full in the install dialog before the user accepts: `{ title; version; url; retrieved; text; }`. `version` is the vendor's version or revision date (the box records which version each profile accepted), `retrieved` the date the text was copied (`YYYY-MM-DD`), `text` a plain UTF-8 file `./terms/<name>-<version>.txt`, `<name>` the id, or a vendor name when entries share one document (Plex HTPC and Plex Media Server use `plex-<version>.txt`): entries with the same `url` or file must have the same terms. The index carries title, version, url, retrieved and the file name `terms/<name>-<version>.txt`; the index package installs the files next to `catalog.json` |
 | `readme` | no | The upstream project's README, shown on the app's Store page: `{ url; retrieved; text; }`. `url` is the file at the exact upstream commit (`https://github.com/<repo>/blob/<sha>/README.md`), `retrieved` the date it was copied, `text` the file `./readme/<id>.md`, unmodified, at most 64 KiB. Apps with the same upstream (the OpenRA mods) each have their own copy. The index carries url, retrieved and `readme/<id>.md`; the index package installs the files next to `catalog.json`. See "Upstream READMEs" |
 | `dataPaths` | no | Paths relative to a profile's home that hold the app's data. "Remove and delete data" deletes them in the removing profile's home only, after a second confirmation. No leading `/` or `~`, no `.`, `..` or empty components, none of `* ? [ ] \ $` and backtick (the daemon refuses the whole index for a path it does not accept). A kiosk (web) app must list its Firefox profile, `.local/share/hinteros/firefox/<id>`. Deleting Steam's `.local/share/Steam` also removes installed games. Services keep their data in `/var/lib` (`stateDirs`); the validator refuses `dataPaths` on them |
 | `permissions` | no (apps) | What the app may use in its sandbox, `{ <name> = "required" \| "optional"; }`, default `{ }`. Names: `gamepad` (`/dev/input`, device ACLs limit it to controllers, and `/run/udev`; `"required"` for every app with `input = "gamepad"` or no `input`, the daemon's default), `mic` (a pulse socket that may record), `downloads` (the profile's `~/Downloads`, read-write), `lan` (the local network: devices at home and this box's own services; without it the app reaches only DNS and the internet). The install sheet shows them all switched on; the user can switch optional ones off (then and on the app's page). The validator refuses other names and values. In the index |
@@ -159,7 +159,7 @@ with `boxFeatures`, not a service.
      entry has nixpkgs' `unfreeRedistributable` licence (`nix flake check` enforces it) and the
      vendor's terms agree. Plex-style apps stay `"build"`.
    - Terms: `terms.text` is the vendor's current full text (nothing paraphrased), `version`, `url`
-     and `retrieved` are right, and the file is named `<id>-<version>.txt`.
+     and `retrieved` are right, and the file is named `<name>-<version>.txt`.
    - `dataPaths` lists every directory the app writes under a profile's home (check on a box:
      `~/.config`, `~/.local/share`, `~/.cache`, dotfiles), and nothing shared with other apps.
      A sandboxed app writes only inside its sandbox home, which is listed automatically.
@@ -185,11 +185,11 @@ announces a change:
 
 1. Open `terms.url` and note the version or "last updated"/"revised" date on the page.
 2. If it differs from `terms.version`: save the page's agreement text as plain text (headings and
-   paragraphs preserved, no navigation, scripts or footers) as `apps/terms/<id>-<new version>.txt`.
+   paragraphs preserved, no navigation, scripts or footers) as `apps/terms/<name>-<new version>.txt`.
    Never paraphrase or hand-edit the vendor's wording. If the text cannot be fetched, do not
    invent it: keep the old version and open an issue.
-3. In the entry, set `terms.version`, `terms.retrieved` (today) and `terms.text`; `git rm` the old
-   file.
+3. In each entry that uses the file, set `terms.version`, `terms.retrieved` (today) and
+   `terms.text`; `git rm` the old file.
 4. Read the diff against the old text for changes that affect the install decision (new
    licence restrictions, redistribution, subscription terms) and revisit `delivery` and the
    description if so.

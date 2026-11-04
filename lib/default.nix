@@ -499,7 +499,7 @@ let
               "retrieved"
               "text"
             ] (attrNames tm);
-            file = "${id}-${tm.version or ""}.txt";
+            suffix = "-${tm.version or ""}.txt";
           in
           lib.optional (unknownKeys != [ ]) "terms: unknown field(s) ${lib.concatStringsSep ", " unknownKeys}"
           ++ lib.optional (
@@ -516,11 +516,11 @@ let
           ) "terms.retrieved: the retrieval date, YYYY-MM-DD"
           ++ (
             if !isPath (tm.text or null) then
-              [ "terms.text: a path to the plain-text terms, ./terms/<id>-<version>.txt" ]
+              [ "terms.text: a path to the plain-text terms, ./terms/<name>-<version>.txt" ]
             else
               lib.optional (
-                baseNameOf tm.text != file
-              ) "terms.text: the file must be named ${file} (<id>-<version>.txt)"
+                !(lib.hasSuffix suffix (baseNameOf tm.text) && isId (lib.removeSuffix suffix (baseNameOf tm.text)))
+              ) "terms.text: the file must be named <name>${suffix}, <name> the id or a vendor name entries with the same terms share (as an id: a-z, 0-9, -)"
               ++ lib.optional (!builtins.pathExists tm.text) "terms.text: file does not exist"
           );
 
@@ -814,8 +814,32 @@ let
         ++ map (d: "${id}: onIso but depends on ${d}, which is not onIso") (
           lib.filter (d: e.onIso && entries ? ${d} && !entries.${d}.onIso) e.depends
         )
+        # One document, one file: entries with the same terms url or file have the same terms,
+        # so a refresh cannot update one and leave the other behind.
+        ++ map (o: "${id}: terms differ from ${o}'s, which has the same url or file (share one file and version)") (
+          lib.filter (
+            o:
+            o != id
+            && e.terms != null
+            && entries.${o}.terms != null
+            && (
+              entries.${o}.terms.url == e.terms.url
+              || baseNameOf entries.${o}.terms.text == baseNameOf e.terms.text
+            )
+            && termsKey entries.${o}.terms != termsKey e.terms
+          ) (attrNames entries)
+        )
       ) entries
     );
+  termsKey = t: {
+    inherit (t)
+      title
+      version
+      url
+      retrieved
+      ;
+    file = baseNameOf t.text;
+  };
 
   # Fill defaults and derived fields. Only call on entries without problems (or for checks).
   normalize =

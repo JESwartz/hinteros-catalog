@@ -34,7 +34,7 @@
     version = "2025-10-30"; # "Revised October 30, 2025"
     url = "https://www.plex.tv/about/privacy-legal/plex-terms-of-service/";
     retrieved = "2026-10-06";
-    text = ./terms/plex-media-server-2025-10-30.txt;
+    text = ./terms/plex-2025-10-30.txt; # shared with plex-htpc
   };
 
   service = _: {

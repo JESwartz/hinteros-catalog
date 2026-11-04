@@ -239,7 +239,7 @@ let
       expected = true;
     };
     testTermsFileName = {
-      expr = refuses "the file must be named example-2.0.txt" (
+      expr = refuses "the file must be named <name>-2.0.txt" (
         good
         // {
           terms = terms // {
@@ -248,6 +248,30 @@ let
         }
       );
       expected = true;
+    };
+    # Entries with one document share one file (<vendor>-<version>.txt), and must agree on it.
+    testTermsSharedFile = {
+      expr =
+        let
+          unfreeWith = t: good // unfreeRedistributable // { terms = t; };
+        in
+        {
+          shared = catalogLib.validate {
+            a = unfreeWith terms;
+            b = unfreeWith terms;
+          };
+          drift = catalogLib.validate {
+            a = unfreeWith terms;
+            b = unfreeWith (terms // { title = "Old Example Terms"; });
+          };
+        };
+      expected = {
+        shared = { };
+        drift._catalog = [
+          "a: terms differ from b's, which has the same url or file (share one file and version)"
+          "b: terms differ from a's, which has the same url or file (share one file and version)"
+        ];
+      };
     };
     testTermsFields = {
       expr = map (t: refuses "terms." (good // { terms = terms // t; })) [

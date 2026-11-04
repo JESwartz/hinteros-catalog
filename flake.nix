@@ -24,7 +24,10 @@
       pkgs = nixpkgs.legacyPackages.${system};
       inherit (nixpkgs) lib;
       catalogLib = import ./lib { inherit lib; };
-      termsEntries = lib.filter (e: e.terms or null != null) (lib.attrValues self.catalog);
+      # Each terms file once: entries with the same document share one (Plex).
+      termsFiles = lib.unique (
+        map (e: e.terms.text) (lib.filter (e: e.terms or null != null) (lib.attrValues self.catalog))
+      );
       readmeEntries = lib.filter (e: e.readme or null != null) (lib.attrValues self.catalog);
     in
     {
@@ -58,8 +61,8 @@
               mkdir -p $out/share/hinteros/terms $out/share/hinteros/readme
               jq --sort-keys . "$jsonPath" > $out/share/hinteros/catalog.json
               ${lib.concatMapStringsSep "\n" (
-                e: "cp ${e.terms.text} $out/share/hinteros/terms/${baseNameOf e.terms.text}"
-              ) termsEntries}
+                f: "cp ${f} $out/share/hinteros/terms/${baseNameOf f}"
+              ) termsFiles}
               ${lib.concatMapStringsSep "\n" (
                 e: "cp ${e.readme.text} $out/share/hinteros/readme/${baseNameOf e.readme.text}"
               ) readmeEntries}
