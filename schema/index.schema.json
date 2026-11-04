@@ -69,11 +69,11 @@
         },
         "boxFeatures": {
           "type": "array",
-          "description": "Box features the app needs; the system turns them on box-wide when any profile has the app. Always empty for services",
+          "description": "Box features the app needs; the system turns them on box-wide when any profile has the app. Always empty for services. Unknown values: the entry is not installable (like an unknown status) and the unknown feature asks nothing of the box; the rest of the index stays usable",
           "items": { "enum": ["graphics32", "steam-devices"] }
         },
         "starter": {
-          "description": "Installer app step: null (Store only), offered (listed) or ticked (listed and pre-selected; implies onIso). Always null for services",
+          "description": "Installer app step: null (Store only), offered (listed) or ticked (listed and pre-selected; implies onIso). Always null for services. Unknown values: offered",
           "enum": [null, "offered", "ticked"]
         },
         "onIso": {
@@ -126,7 +126,7 @@
             }
           ]
         },
-        "status": { "enum": ["available", "retired"] },
+        "status": { "description": "Unknown values: like retired (an installed app keeps working, not installable)", "enum": ["available", "retired"] },
         "statusReason": { "type": ["string", "null"], "maxLength": 200 },
         "unfree": { "type": "boolean", "description": "The app is not free software. Vendor terms are required; never on the ISO. Missing: true" },
         "delivery": {
@@ -135,7 +135,7 @@
         },
         "permissions": {
           "type": "object",
-          "description": "Sandbox permissions the app declares. required: always granted; optional: the profile user can switch it off. Unknown names: ignore. Missing: none",
+          "description": "Sandbox permissions the app declares. required: always granted; optional: the profile user can switch it off. Unknown names: ignore. Unknown values: required. Missing: none",
           "propertyNames": { "pattern": "^[a-z][a-z0-9-]{0,31}$" },
           "additionalProperties": { "enum": ["required", "optional"] }
         },
@@ -145,7 +145,7 @@
         },
         "ports": {
           "type": "array",
-          "description": "Services: ports the system opens while the service is on. lan: the local networks and tailscale0; any: every source. Empty for apps. Missing: none",
+          "description": "Services: ports the system opens while the service is on. lan: the local networks and tailscale0; any: every source. A port with an unknown proto or from is not opened. Empty for apps. Missing: none",
           "items": {
             "type": "object",
             "additionalProperties": false,
