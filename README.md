@@ -104,7 +104,7 @@ show logos before an app is installed. Priority, first hit wins:
 Choosing an `iconUrl`: a square PNG or SVG of at least 192 px, hosted on the vendor's or
 project's own domain (or its official GitHub organisation, for open-source projects), never a
 Wikimedia page or third-party mirror, and as stable as possible (press-kit or branding-repo
-assets over CDN hashes). Say in a comment where it came from and the date it was checked. If no
+assets over CDN hashes; a GitHub raw URL at a commit, never at a branch such as `main`, which moves and breaks the hash). Say in a comment where it came from and the date it was checked. If no
 suitable official URL exists, leave `iconUrl` unset and say why; the fallbacks cover it. Set
 `sha256` to the file's hash: `curl -sSL <iconUrl> | sha256sum`; look at the file first.
 
