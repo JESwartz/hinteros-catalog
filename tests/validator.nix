@@ -1204,6 +1204,20 @@ let
         true
       ];
     };
+    testBackKeyNull = {
+      expr = problems "example" (
+        good
+        // {
+          permissions.gamepad = "required";
+          dataPaths = [ ".local/share/hinteros/firefox/example" ];
+          app = _: {
+            command = [ "x" ];
+            backKey = null;
+          };
+        }
+      );
+      expected = [ ];
+    };
     testBackKeyNames = {
       expr =
         map

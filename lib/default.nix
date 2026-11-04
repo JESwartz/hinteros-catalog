@@ -644,11 +644,12 @@ let
           # The session daemon refuses these for a gamepad app, and then ignores every app of the
           # profile's env (config.rs, validate).
           ++ lib.optional (
-            (appAttrs ? backKey || (kiosk.fullscreenOnly or false) == true)
+            # backKey = null is the default (app-entries.nix: nullOr str), not a key.
+            ((appAttrs.backKey or null) != null || (kiosk.fullscreenOnly or false) == true)
             && (appAttrs.input or "gamepad") != "keyboard"
           ) "app: backKey and kiosk.fullscreenOnly need input = \"keyboard\""
           ++
-            lib.optional (appAttrs ? backKey && !isKeyCombo appAttrs.backKey)
+            lib.optional ((appAttrs.backKey or null) != null && !isKeyCombo appAttrs.backKey)
               "app.backKey: a key name with optional modifiers, e.g. \"escape\" or \"alt+left\" (the daemon's key names)"
           ++
             lib.optional
