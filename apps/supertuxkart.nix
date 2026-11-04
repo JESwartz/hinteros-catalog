@@ -30,6 +30,13 @@
     sha256 = "fcd2bdee6df6ca0366681f2091b11920a9ecc6ea553a3935750568c471bd95b9";
   };
 
+  # Without the sandbox: settings, saved karts and tracks, caches (the XDG directories upstream
+  # documents; with the sandbox they are in its home, listed automatically).
+  dataPaths = [
+    ".config/supertuxkart"
+    ".local/share/supertuxkart"
+    ".cache/supertuxkart"
+  ];
   permissions = {
     # The sandbox hides /dev/input; the game reads the controller itself.
     gamepad = "required";

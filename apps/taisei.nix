@@ -24,6 +24,9 @@
     sha256 = "d2e21648a7b9677d015a6502afbc2817e1c06e6bc2d14574c70ac750b3c6665e";
   };
 
+  # Without the sandbox: settings, progress and replays (upstream's XDG data directory; with the
+  # sandbox it is in its home, listed automatically).
+  dataPaths = [ ".local/share/taisei" ];
   permissions = {
     # The sandbox hides /dev/input; the game reads the controller itself.
     gamepad = "required";
