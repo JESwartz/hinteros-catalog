@@ -33,17 +33,6 @@
         # Unfree package names allowed in the binary cache and the ISO build despite
         # `forbidUnfree`: unfree entries with `delivery = "download"` (nixpkgs-checked unfreeRedistributable).
         cacheableUnfree = catalogLib.cacheableUnfreeOf self.catalog;
-        # Only the apps / only the services of the catalog.
-        appsOnly = catalogLib.appsOnlyOf self.catalog;
-        services = catalogLib.servicesOf self.catalog;
-        # Union of box features the given app ids need (sorted); throws on unknown ids.
-        featuresOf = catalogLib.featuresOfIn self.catalog;
-        # Sorted service ids the given app ids need (needsServices); throws on unknown ids.
-        servicesNeededBy = catalogLib.servicesNeededBy self.catalog;
-        # The installer's app step: { offered; ticked; onIso; } as id lists.
-        starterDefaults = catalogLib.starterDefaultsOf self.catalog;
-        # { <id> = { name, kind, status, statusReason }; }, without evaluating any package.
-        catalogIds = catalogLib.catalogIdsOf self.catalog;
       };
 
       # Every entry, validated and normalized: { <id> = entry; }. Evaluating it throws with every

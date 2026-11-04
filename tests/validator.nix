@@ -896,67 +896,6 @@ let
       expected = "service";
     };
 
-    # Library views.
-    testViews =
-      let
-        cat = lib.mapAttrs catalogLib.normalize {
-          a = good // {
-            boxFeatures = [ "steam-devices" ];
-            starter = "offered";
-          };
-          b = good // {
-            boxFeatures = [
-              "graphics32"
-              "steam-devices"
-            ];
-            onIso = true;
-            starter = "ticked";
-          };
-          c = good;
-          s = goodService;
-        };
-      in
-      {
-        expr = {
-          apps = lib.attrNames (catalogLib.appsOnlyOf cat);
-          services = lib.attrNames (catalogLib.servicesOf cat);
-          features = catalogLib.featuresOfIn cat [
-            "a"
-            "b"
-            "c"
-          ];
-          none = catalogLib.featuresOfIn cat [ ];
-          starter = catalogLib.starterDefaultsOf cat;
-          ids = catalogLib.catalogIdsOf cat;
-        };
-        expected = {
-          apps = [
-            "a"
-            "b"
-            "c"
-          ];
-          services = [ "s" ];
-          features = [
-            "graphics32"
-            "steam-devices"
-          ];
-          none = [ ];
-          starter = {
-            offered = [
-              "a"
-              "b"
-            ];
-            ticked = [ "b" ];
-            onIso = [ "b" ];
-          };
-          ids = lib.genAttrs [ "a" "b" "c" "s" ] (id: {
-            name = if id == "s" then "Example server" else "Example";
-            kind = if id == "s" then "service" else "app";
-            status = "available";
-            statusReason = null;
-          });
-        };
-      };
     # needsServices: apps may need services (not depends, which stays within a kind).
     testNeedsServicesValid = {
       expr = catalogLib.validate {
@@ -1003,58 +942,31 @@ let
         _catalog = [ "a: a app cannot depend on s, which is a service" ];
       };
     };
-    testServicesNeededBy = {
+    testNeedsServicesInIndex = {
       expr =
-        let
-          cat = lib.mapAttrs catalogLib.normalize {
-            a = good // {
-              needsServices = [
-                "s2"
-                "s1"
-              ];
-            };
-            b = good // {
-              needsServices = [ "s1" ];
-            };
-            c = good;
-            s1 = goodService;
-            s2 = goodService;
-          };
-        in
-        {
-          some = catalogLib.servicesNeededBy cat [
-            "a"
-            "b"
-          ];
-          none = catalogLib.servicesNeededBy cat [ "c" ];
-          index = map (e: e.needsServices or null) (catalogLib.mkIndex cat).entries;
-        };
-      expected = {
-        some = [
-          "s1"
+        map (e: e.needsServices or null)
+          (catalogLib.mkIndex (
+            lib.mapAttrs catalogLib.normalize {
+              a = good // {
+                needsServices = [
+                  "s2"
+                  "s1"
+                ];
+              };
+              c = good;
+              s1 = goodService;
+              s2 = goodService;
+            }
+          )).entries;
+      expected = [
+        [
           "s2"
-        ];
-        none = [ ];
-        index = [
-          [
-            "s2"
-            "s1"
-          ]
-          [ "s1" ]
-          [ ]
-          [ ]
-          [ ]
-        ];
-      };
-    };
-    testServicesNeededByUnknownThrows = {
-      expr =
-        (builtins.tryEval (builtins.deepSeq (catalogLib.servicesNeededBy { } [ "nope" ]) true)).success;
-      expected = false;
-    };
-    testFeaturesOfUnknownThrows = {
-      expr = (builtins.tryEval (builtins.deepSeq (catalogLib.featuresOfIn { } [ "nope" ]) true)).success;
-      expected = false;
+          "s1"
+        ]
+        [ ]
+        [ ]
+        [ ]
+      ];
     };
     testIndexVersion = {
       expr = (catalogLib.mkIndex { }).indexVersion;

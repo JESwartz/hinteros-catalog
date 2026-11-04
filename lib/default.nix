@@ -996,63 +996,6 @@ let
       )
     );
 
-  # Views of a loaded catalog for the system repo.
-  appsOnlyOf = lib.filterAttrs (_: e: e.kind == "app");
-  servicesOf = lib.filterAttrs (_: e: e.kind == "service");
-
-  # The union of box features the given app ids need, sorted. Unknown ids throw: callers
-  # validate ids first, and a silent [] would drop a feature.
-  featuresOfIn =
-    catalog: ids:
-    lib.sort lib.lessThan (
-      lib.unique (
-        lib.concatMap (
-          id: (catalog.${id} or (throw "hinteros-catalog: unknown entry ${id}")).boxFeatures
-        ) ids
-      )
-    );
-
-  # The service ids the given app ids need, sorted and unique. The Store disables Install (red
-  # "needs the X server, the admin profile can install it in Server") while one is not installed,
-  # and the privileged service refuses the install. Unknown ids throw, as in featuresOfIn.
-  servicesNeededBy =
-    catalog: ids:
-    lib.sort lib.lessThan (
-      lib.unique (
-        lib.concatMap (
-          id: (catalog.${id} or (throw "hinteros-catalog: unknown entry ${id}")).needsServices
-        ) ids
-      )
-    );
-
-  # The installer's app step: ids of available apps with `starter` set, sorted. `offered` lists
-  # everything the installer shows (ticked ones included), `ticked` the pre-selected subset,
-  # `onIso` the ones that ship on the ISO (usable offline).
-  starterDefaultsOf =
-    catalog:
-    let
-      apps = lib.filter (e: e.kind == "app" && e.status == "available") (lib.attrValues catalog);
-      idsWhere = p: lib.sort lib.lessThan (map (e: e.id) (lib.filter p apps));
-    in
-    {
-      offered = idsWhere (e: e.starter != null);
-      ticked = idsWhere (e: e.starter == "ticked");
-      onIso = idsWhere (e: e.onIso);
-    };
-
-  # { "<id>" = { name, kind, status, statusReason }; }: cheap, package-free, evaluable for any
-  # revision of the catalog (update.check, state.nix id checks).
-  catalogIdsOf =
-    catalog:
-    lib.mapAttrs (_: e: {
-      inherit (e)
-        name
-        kind
-        status
-        statusReason
-        ;
-    }) catalog;
-
   mkIndex = catalog: {
     inherit indexVersion;
     entries = map indexEntry (lib.sort (a: b: a.id < b.id) (lib.attrValues catalog));
@@ -1082,11 +1025,5 @@ in
     load
     mkIndex
     cacheableUnfreeOf
-    appsOnlyOf
-    servicesOf
-    featuresOfIn
-    servicesNeededBy
-    starterDefaultsOf
-    catalogIdsOf
     ;
 }

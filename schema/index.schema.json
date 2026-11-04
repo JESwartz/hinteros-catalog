@@ -83,7 +83,7 @@
         "depends": { "type": "array", "items": { "$ref": "#/$defs/Id" } },
         "needsServices": {
           "type": "array",
-          "description": "Ids of kind=service entries this app needs. While one is not installed, show the app with red text (needs the X server; the admin profile can install it in Server) and disable Install. Always empty for services",
+          "description": "Ids of kind=service entries this app needs. Planned: while one is not installed, the Store disables Install and the privileged service refuses it. Not enforced by the 1.0 daemon. Always empty for services",
           "items": { "$ref": "#/$defs/Id" }
         },
         "conflicts": { "type": "array", "items": { "$ref": "#/$defs/Id" } },

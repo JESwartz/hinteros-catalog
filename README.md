@@ -31,7 +31,7 @@ Flake outputs:
 | `catalog` | `{ <id> = entry; }`, validated and normalized. Evaluating it throws with every problem if any entry is invalid |
 | `catalogIndex` | The Store index as a Nix value |
 | `packages.x86_64-linux.index` | `$out/share/hinteros/catalog.json` (the index) `$out/share/hinteros/terms/*.txt` and `$out/share/hinteros/readme/*.md` (the vendor terms and READMEs it references, so the launcher shows them offline) |
-| `lib` | `load`, `validate`, `checkEntry`, `normalize`, `mkIndex`, the enums, `cacheableUnfree` (the unfree package names of entries with `delivery = "download"`, for the cache job and the `forbidUnfree` exception list), and `appsOnly`, `services`, `featuresOf`, `starterDefaults`, `catalogIds` (see Library outputs) |
+| `lib` | `load`, `validate`, `checkEntry`, `normalize`, `mkIndex`, the enums, `cacheableUnfree` (the unfree package names of entries with `delivery = "download"`, for the cache job and the `forbidUnfree` exception list; `cacheableUnfreeOf` takes a catalog). The system repo derives its own views (installer lists in `nixos/lib/app-ids.nix`, `lib.catalogIds`) from `catalog` |
 | `apps.x86_64-linux.check-icon-urls` | Online check of `iconUrl`, `siteUrl` and `terms.url` (see Icons) |
 | `checks` | formatting/lint, validator tests, index against its schema (v4), package and licence eval, NixOS eval of every box feature and service |
 
@@ -69,7 +69,7 @@ M10); it is never in the Store. See [How to add an app](#adding-an-app-or-a-serv
 | `statusReason` | if not available | One line shown to users who have the app |
 | `depends`, `conflicts` | no | Other ids of the same kind. Installing adds dependencies; conflicting apps cannot be installed together |
 | `starter` | no (apps) | `null` (default: Store only), `"offered"` (listed in the installer's app step) or `"ticked"` (listed and pre-selected; needs `onIso`). The installer's picks are the starter set, copied into every new profile and guest session. Offered: YouTube, Jellyfin, Firefox, Steam, VacuumTube, Plex; ticked: YouTube, Firefox. Offered apps that are not `onIso` (Steam, VacuumTube, Plex) are downloaded, so picking one needs a network connection |
-| `needsServices` | no (apps) | Ids of `kind = "service"` entries the app needs (e.g. `[ "jellyfin-server" ]`); the validator refuses unknown ids, apps, removed entries, and the field on a service. Never installed with the app: while a needed service is not installed the Store shows red text (it needs that server, the admin profile can install it in Server) and disables Install, and the privileged service refuses the install. An app's `depends` stays app-to-app. In the index; `servicesNeededBy catalog ids` returns the union |
+| `needsServices` | no (apps) | Ids of `kind = "service"` entries the app needs (e.g. `[ "jellyfin-server" ]`); the validator refuses unknown ids, apps, removed entries, and the field on a service. Never installed with the app. In the index, but not enforced yet: the daemon parses it, and neither the Store nor the privileged service checks it, so an app with `needsServices` installs like any other. Do not rely on it until the daemon refuses the install while a needed service is off. An app's `depends` stays app-to-app |
 | `onIso` | no (apps) | Ships on the ISO, so an offline install can pick it (YouTube, Jellyfin, Firefox). Free apps only; its `depends` must be `onIso` too |
 | `delivery` | no (unfree entries) | `"build"` (the default for unfree entries): fetched from the vendor and built on the box during install. `"download"`: only for an unfree entry whose unfree packages are all `unfreeRedistributable` in nixpkgs (free licences beside it are fine): CI builds it, the binary cache serves it and the install is a download like a free app. Checked against nixpkgs `meta.license` by `tests/packages.nix`. Free entries are always cached and must not set it (their `delivery` is always `"download"`). Names of `"download"` entries go into `lib.cacheableUnfree` |
 | `terms` | unfree entries | The vendor's full terms, shown in full in the install dialog before the user accepts: `{ title; version; url; retrieved; text; }`. `version` is the vendor's version or revision date (the box records which version each profile accepted), `retrieved` the date the text was copied (`YYYY-MM-DD`), `text` a plain UTF-8 file `./terms/<id>-<version>.txt`. The index carries title, version, url, retrieved and the file name `terms/<id>-<version>.txt`; the index package installs the files next to `catalog.json` |
@@ -84,16 +84,6 @@ on the ISO). For a sandboxed app, `dataPaths` also has its sandbox home,
 `.local/share/hinteros/sandbox/<id>`, and `sandbox` is always `false` for services. `catalog` also
 has `type` (`web` if `app.kiosk` is set, else `native`; `service` for services), which the
 validator reads; it is not in the index. In the index, `license.unfree` is the entry field `unfree`.
-
-### Library outputs for the system repo
-
-`lib` (flake output) also has, bound to this catalog: `appsOnly` and `services` (the catalog
-filtered by kind), `featuresOf ids` (the sorted union of the `boxFeatures` of those app ids; throws
-on an unknown id), `starterDefaults` (`{ offered; ticked; onIso; }` id lists for the installer),
-`catalogIds` (`{ <id> = { name, kind, status, statusReason }; }`, evaluated without any
-package), `servicesNeededBy ids` (the sorted service ids those apps need) and `cacheableUnfree`.
-The pure versions (`appsOnlyOf`, `servicesOf`, `featuresOfIn`, `servicesNeededBy`,
-`starterDefaultsOf`, `catalogIdsOf`, `cacheableUnfreeOf`) take a catalog as argument.
 
 ### Icons
 
