@@ -152,6 +152,22 @@ let
   # Relative path below /var/lib (a service's state directory): the same rules as isHomePath,
   # and only letters, digits, `.`, `_`, `-` and `/`.
   isVarLibPath = v: isHomePath v && builtins.match "[A-Za-z0-9._/-]+" v != null;
+  # /var/lib directories that hold the box's own state: "delete server data" removes the
+  # stateDirs, so none may name them (or a folder above them). HinterOS's own directory only as
+  # hinteros/services/<entry id> or below. The daemon refuses the same.
+  reservedVarLib = [
+    "hinteros"
+    "nixos"
+    "systemd"
+    "private"
+  ];
+  badStateDir =
+    id: v:
+    let
+      parts = lib.splitString "/" v;
+    in
+    elem (lib.head parts) reservedVarLib
+    && !(lib.length parts >= 3 && lib.take 3 parts == [ "hinteros" "services" id ]);
   isPort =
     v:
     isAttrs v
@@ -614,6 +630,9 @@ let
               lib.length (lib.unique (map (p: "${toString p.port}/${p.proto}") full.ports))
               != lib.length full.ports
           ) "ports: each port and proto at most once"
+          ++ lib.optional (
+            fields.stateDirs.check full.stateDirs && lib.any (badStateDir id) full.stateDirs
+          ) "stateDirs: not system state (${lib.concatStringsSep ", " reservedVarLib}); hinteros only as hinteros/services/${id}"
         else
           lib.optional (full.app == null) "app: required for kind = \"app\" (or status = \"removed\")"
           ++ lib.optional (e ? ports) "ports: only for services"
