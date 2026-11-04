@@ -143,11 +143,13 @@ let
     isString v && v != "" && stringLength v <= max && builtins.match ".*[[:cntrl:]].*" v == null;
   # Like isText, but newlines are allowed (descriptions, notes).
   isLongText = max: v: isString v && v != "" && stringLength v <= max;
-  # Relative path below a profile's home: no leading / or ~, no empty, . or .. components.
+  # Relative path below a profile's home: no leading / or ~, no empty, . or .. components, no
+  # wildcards, brackets or backslashes. At least as strict as the daemon's is_data_path
+  # (hinteros-api catalog.rs), which refuses the whole index for one path it does not accept.
   isHomePath =
     v:
     isText 200 v
-    && builtins.match "[/~].*|.*[*?$`].*" v == null
+    && builtins.match "[/~].*|.*[][*?$`\\\\].*" v == null
     && lib.all (c: c != "" && c != "." && c != "..") (lib.splitString "/" v);
   # Relative path below /var/lib (a service's state directory): the same rules as isHomePath,
   # and only letters, digits, `.`, `_`, `-` and `/`.
@@ -285,7 +287,7 @@ let
     dataPaths = {
       default = [ ];
       check = listOf isHomePath;
-      what = "a list of paths relative to a profile's home (no leading / or ~, no ., .. or empty components, no wildcards)";
+      what = "a list of paths relative to a profile's home (no leading / or ~, no ., .. or empty components, none of * ? [ ] \\ $ `)";
     };
     notes = {
       default = null;

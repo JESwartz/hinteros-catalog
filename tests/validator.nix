@@ -360,8 +360,13 @@ let
         "a//b"
         "a/"
         ".config/*"
+        # The daemon refuses the whole index for these (is_data_path).
+        ".config/Foo [beta]"
+        ".config/a]b"
+        ".config\\Foo"
+        ".config/a\tb"
       ];
-      expected = lib.genList (_: true) 9;
+      expected = lib.genList (_: true) 13;
     };
     testKioskNeedsProfileDataPath = {
       expr = refuses "dataPaths: a kiosk (web) app must list its Firefox profile" (

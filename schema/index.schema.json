@@ -26,7 +26,8 @@
       "maxLength": 200,
       "allOf": [
         { "pattern": "^[^/~]" },
-        { "not": { "pattern": "(^|/)(\\.\\.?)?(/|$)" } }
+        { "not": { "pattern": "(^|/)(\\.\\.?)?(/|$)" } },
+        { "not": { "pattern": "[\u0000-\u001f\u007f*?$`\\[\\]\\\\]" } }
       ]
     },
     "Https": { "type": "string", "pattern": "^https://\\S+$" },
