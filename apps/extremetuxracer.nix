@@ -25,6 +25,10 @@
     siteUrl = null;
   };
 
+  # Without the sandbox: players, high scores and messages (measured on the dev box; with the
+  # sandbox they are in its home, listed automatically).
+  dataPaths = [ ".config/etr" ];
+
   app =
     { pkgs, ... }:
     {

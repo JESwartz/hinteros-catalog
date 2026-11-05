@@ -30,6 +30,10 @@
     sha256 = "00962b4d99401827b24bce91bc76672ee69380d075085f6d5148a085d7badcb5";
   };
 
+  # Without the sandbox: settings and saved games (measured on the dev box: libGDX writes
+  # `.local/share/.shatteredpixel/shattered-pixel-dungeon`; with the sandbox it is in its home,
+  # listed automatically).
+  dataPaths = [ ".local/share/.shatteredpixel" ];
   permissions = {
     # The sandbox hides /dev/input; the game reads the controller itself.
     gamepad = "required";
