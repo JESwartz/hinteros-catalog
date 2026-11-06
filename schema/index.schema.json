@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://justsomeshed.com/JSwartz/HinterOS/hinteros-catalog/schema/index.schema.json",
+  "$id": "https://git.hinteros.org/hinteros-catalog/schema/index.schema.json",
   "title": "HinterOS catalog index",
   "description": "Generated from apps/*.nix by lib.mkIndex (indexVersion 4). Read by the session daemon and the launcher's Store UI. Receivers ignore unknown fields and treat unknown enum values as documented.",
   "type": "object",
